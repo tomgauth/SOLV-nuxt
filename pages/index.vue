@@ -1,70 +1,877 @@
-<template>
-  <v-layout column justify-center align-center>
-    <v-flex xs12 sm8 md6>
-      <div class="text-xs-center">
-        <logo />
-        <vuetify-logo />
-      </div>
-      <v-card>
-        <v-card-title class="headline"
-          >Welcome to the Vuetify + Nuxt.js template</v-card-title
-        >
-        <v-card-text>
-          <p>
-            Vuetify is a progressive Material Design component framework for
-            Vue.js. It was designed to empower developers to create amazing
-            applications.
-          </p>
-          <p>
-            For more information on Vuetify, check out the
-            <a href="https://vuetifyjs.com" target="_blank">documentation</a>.
-          </p>
-          <p>
-            If you have questions, please join the official
-            <a href="https://chat.vuetifyjs.com/" target="_blank" title="chat"
-              >discord</a
-            >.
-          </p>
-          <p>
-            Find a bug? Report it on the github
-            <a
-              href="https://github.com/vuetifyjs/vuetify/issues"
-              target="_blank"
-              title="contribute"
-              >issue board</a
-            >.
-          </p>
-          <p>
-            Thank you for developing with Vuetify and I look forward to bringing
-            more exciting features in the future.
-          </p>
-          <div class="text-xs-right">
-            <em><small>&mdash; John Leider</small></em>
-          </div>
-          <hr class="my-3" />
-          <a href="https://nuxtjs.org/" target="_blank">Nuxt Documentation</a>
-          <br />
-          <a href="https://github.com/nuxt/nuxt.js" target="_blank"
-            >Nuxt GitHub</a
+<template data-app>
+  <div>
+    <v-toolbar flat color="white">
+      <v-toolbar-title>All Sentences</v-toolbar-title>
+      <v-divider
+        class="mx-2"
+        inset
+        vertical
+      ></v-divider>
+      <v-spacer></v-spacer>
+      <v-text-field
+        v-model="search"
+        append-icon="search"
+        label="Search"
+        single-line
+        hide-details
+      ></v-text-field>
+      <v-dialog v-model="dialog" max-width="500px">
+        <template v-slot:activator="{ on }">
+          <v-btn color="primary" dark class="mb-2" v-on="on">New Item</v-btn>
+        </template>
+        <v-card>
+          <v-card-title>
+            <span class="headline">{{ formTitle }}</span>
+          </v-card-title>
+
+          <v-card-text>
+            <v-container grid-list-md>
+              <v-layout wrap>
+                <v-flex xs12 sm6 md4>
+                  <v-text-field v-model="editedItem.name" label="Sentence name"></v-text-field>
+                </v-flex>
+                <v-flex xs12 sm6 md4>
+                  <v-text-field v-model="editedItem.type" label="Type"></v-text-field>
+                </v-flex>
+                <v-flex xs12 sm6 md4>
+                  <v-text-field v-model="editedItem.en" label="English"></v-text-field>
+                </v-flex>
+                <v-flex xs12 sm6 md4>
+                  <v-text-field v-model="editedItem.fr" label="French"></v-text-field>
+                </v-flex>
+                <v-flex xs12 sm6 md4>
+                  <v-text-field v-model="editedItem.day" label="Day"></v-text-field>
+                </v-flex>
+              </v-layout>
+            </v-container>
+          </v-card-text>
+
+          <v-card-actions>
+            <v-spacer></v-spacer>
+            <v-btn color="blue darken-1" flat @click="close">Cancel</v-btn>
+            <v-btn color="blue darken-1" flat @click="save">Save</v-btn>
+          </v-card-actions>
+        </v-card>
+      </v-dialog>
+    </v-toolbar>
+    <v-data-table
+      :headers="headers"
+      :search="search"
+      :items="sentences"
+      :pagination.sync="pagination"
+      class="elevation-1"
+    >
+      <template v-slot:items="props">
+        <td>{{ props.item.name }}</td>
+        <td class="text-xs-left">{{ props.item.day }}</td>
+        <td class="text-xs-left">{{ props.item.type }}</td>
+        <td class="text-xs-left">{{ props.item.name }}</td>
+        <td class="text-xs-left">{{ props.item.en }}</td>
+        <td class="text-xs-left">{{ props.item.fr }}</td>
+        <td class="justify-center layout px-0">
+          <v-icon
+            small
+            class="mr-2"
+            @click="editItem(props.item)"
           >
-        </v-card-text>
-        <v-card-actions>
-          <v-spacer />
-          <v-btn color="primary" flat nuxt to="/inspire">Continue</v-btn>
-        </v-card-actions>
-      </v-card>
-    </v-flex>
-  </v-layout>
+            edit
+          </v-icon>
+          <v-icon
+            small
+            @click="deleteItem(props.item)"
+          >
+            delete
+          </v-icon>
+        </td>
+      </template>
+      <template v-slot:no-data>
+        <v-btn color="primary" @click="initialize">Reset</v-btn>
+      </template>
+      <template v-slot:no-results>
+        <v-alert :value="false" color="error" icon="warning">
+          Your search for "{{ search }}" found no results.
+        </v-alert>
+      </template>
+    </v-data-table>
+  </div>
 </template>
 
 <script>
-import Logo from '~/components/Logo.vue'
-import VuetifyLogo from '~/components/VuetifyLogo.vue'
-
 export default {
-  components: {
-    Logo,
-    VuetifyLogo
+  data: () => ({
+    dialog: false,
+    search: '',
+    rowsPerPageItems: [10, 25, 50, 100],
+    pagination: {
+      sortBy: 'day',
+      rowsPerPage: 50
+    },
+    selected: [],
+    headers: [
+      {
+        text: 'Sentences',
+        align: 'left',
+        value: 'name',
+      },
+      { text: 'Day', value: 'day' },
+      { text: 'type', value: 'type' },
+      { text: 'Name', value: 'name' },
+      { text: 'English', value: 'en' },
+      { text: 'French', value: 'fr' }
+    ],
+    editedIndex: -1,
+      editedItem: {
+        name: '',
+        type: '',
+        en: '',
+        fr: '',
+        day: ''
+      },
+      defaultItem: {
+        name: '',
+        type: '',
+        en: '',
+        fr: '',
+        day: ''
+      },
+    sentences: [{day:"001", type:"QNA", block_number:"001", name:"L001QNA001", fr: "Comment ça va ?", en: "How is it going ?", words: ["comment", "ça", "va"]},
+      {day:"001", type:"MIP", block_number:"001", name:"L001MIP001", fr: "ça va", en: "It’s okay", words: ["ça", "va"]},
+      {day:"001", type:"MIP", block_number:"002", name:"L001MIP002", fr: "comment", en: "how", words: ["comment"]},
+      {day:"001", type:"MIP", block_number:"003", name:"L001MIP003", fr: "très bien", en: "very good", words: ["très", "bien"]},
+      {day:"001", type:"MIP", block_number:"004", name:"L001MIP004", fr: "je vais", en: "I go", words: ["je", "vais"]},
+      {day:"001", type:"MIP", block_number:"005", name:"L001MIP005", fr: "pas", en: "not", words: ["pas"]},
+      {day:"001", type:"COM", block_number:"001", name:"L001COM001", fr: "Comment ça va ?", en: "How is it going ?", words: ["comment", "ça", "va"]},
+      {day:"001", type:"COM", block_number:"002", name:"L001COM002", fr: "Je vais très bien", en: "I am doing very well", words: ["je", "vais", "très", "bien"]},
+      {day:"001", type:"COM", block_number:"003", name:"L001COM003", fr: "Ça va pas très bien", en: "It’s not going very well", words: ["ça", "va", "pas", "très", "bien"]},
+      {day:"001", type:"COM", block_number:"004", name:"L001COM004", fr: "Comment je vais ? Très bien .", en: "How am I doing ? Very well .", words: ["comment", "je", "vais", "très", "bien"]},
+      {day:"001", type:"COM", block_number:"005", name:"L001COM005", fr: "Ça va bien ?", en: "Is it going well ?", words: ["ça", "va", "bien"]},
+      {day:"002", type:"QNA", block_number:"001", name:"L002QNA001", fr: "Est-ce que tu parles français ?", en: "Do you speak French ?", words: ["est", "ce", "que", "tu", "parles", "français"]},
+      {day:"002", type:"MIP", block_number:"001", name:"L002MIP001", fr: "Je parle français", en: "I speak French", words: ["je", "parle", "français"]},
+      {day:"002", type:"MIP", block_number:"002", name:"L002MIP002", fr: "Tu parles", en: "You speak", words: ["tu", "parles"]},
+      {day:"002", type:"MIP", block_number:"003", name:"L002MIP003", fr: "un peu", en: "a little", words: ["un", "peu"]},
+      {day:"002", type:"MIP", block_number:"004", name:"L002MIP004", fr: "et toi", en: "and you", words: ["et", "toi"]},
+      {day:"002", type:"MIP", block_number:"005", name:"L002MIP005", fr: "mais", en: "but", words: ["mais"]},
+      {day:"002", type:"COM", block_number:"001", name:"L002COM001", fr: "Je parle un peu français, et toi ?", en: "I speak a little French, and you?", words: ["je", "parle", "un", "peu", "français", "et", "toi"]},
+      {day:"002", type:"COM", block_number:"002", name:"L002COM002", fr: "Tu parles très bien français !", en: "You speak French very well !", words: ["tu", "parles", "très", "bien", "français"]},
+      {day:"002", type:"COM", block_number:"003", name:"L002COM003", fr: "Et toi, est-ce que ça va ?", en: "And you, are you okay?", words: ["et", "toi", "est", "ce", "que", "ça", "va"]},
+      {day:"002", type:"COM", block_number:"004", name:"L002COM004", fr: "Je parle pas bien français mais toi , tu parles très bien !", en: "I don’t speak French well, but you speak very well!", words: ["je", "parle", "pas", "bien", "français", "mais", "toi", "tu", "parles", "très", "bien"]},
+      {day:"002", type:"COM", block_number:"005", name:"L002COM005", fr: "Comment est-ce que tu parles français ?", en: "How do you speak French ?", words: ["comment", "est", "ce", "que", "tu", "parles", "français"]},
+      {day:"003", type:"QNA", block_number:"001", name:"L003QNA001", fr: "Est-ce que tu apprends le français ?", en: "Are you learning French?", words: ["est", "ce", "que", "tu", "apprends", "le", "français"]},
+      {day:"003", type:"MIP", block_number:"001", name:"L003MIP001", fr: "J’apprends", en: "I learn", words: ["j", "apprends"]},
+      {day:"003", type:"MIP", block_number:"002", name:"L003MIP002", fr: "le français", en: "French", words: ["le", "français"]},
+      {day:"003", type:"MIP", block_number:"003", name:"L003MIP003", fr: "oui, bien sûr !", en: "Yes of course !", words: ["oui", "bien", "sûr"]},
+      {day:"003", type:"MIP", block_number:"004", name:"L003MIP004", fr: "beaucoup", en: "a lot", words: ["beaucoup"]},
+      {day:"003", type:"MIP", block_number:"005", name:"L003MIP005", fr: "vous parlez", en: "formal. you speak", words: ["vous", "parlez"]},
+      {day:"003", type:"COM", block_number:"001", name:"L003COM001", fr: "J’apprends le français mais je parle pas très bien", en: "I learn French but I don’t speak very well", words: ["j", "apprends", "le", "français", "mais", "je", "parle", "pas", "très", "bien"]},
+      {day:"003", type:"COM", block_number:"002", name:"L003COM002", fr: "Et vous, vous parlez français ?", en: "Formal. And you, do you speak French?", words: ["et", "vous", "vous", "parlez", "français"]},
+      {day:"003", type:"COM", block_number:"003", name:"L003COM003", fr: "Vous parlez beaucoup, non ?", en: "Formal. You talk a lot, right?", words: ["vous", "parlez", "beaucoup", "non"]},
+      {day:"003", type:"COM", block_number:"004", name:"L003COM004", fr: "Est-ce que vous parlez français ?", en: "Formal. Do you speak French ?", words: ["est", "ce", "que", "vous", "parlez", "français"]},
+      {day:"003", type:"COM", block_number:"005", name:"L003COM005", fr: "Oui, bien sûr, je parle très bien français, j’apprends le français", en: "Yes, of course I speak French very well, I learn French", words: ["oui", "bien", "sûr", "je", "parle", "très", "bien", "français", "j", "apprends", "le", "français"]},
+      {day:"004", type:"QNA", block_number:"001", name:"L004QNA001", fr: "Pourquoi est-ce que tu apprends le français ?", en: "Why are you learning French?", words: ["pourquoi", "est", "ce", "que", "tu", "apprends", "le", "français"]},
+      {day:"004", type:"MIP", block_number:"001", name:"L004MIP001", fr: "Parce que", en: "Because", words: ["parce", "que"]},
+      {day:"004", type:"MIP", block_number:"002", name:"L004MIP002", fr: "je veux parler", en: "I want to talk", words: ["je", "veux", "parler"]},
+      {day:"004", type:"MIP", block_number:"003", name:"L004MIP003", fr: "c’est bien", en: "it’s good", words: ["c", "est", "bien"]},
+      {day:"004", type:"MIP", block_number:"004", name:"L004MIP004", fr: "avec moi", en: "with me", words: ["avec", "moi"]},
+      {day:"004", type:"MIP", block_number:"005", name:"L004MIP005", fr: "on parle", en: "we are talking", words: ["on", "parle"]},
+      {day:"004", type:"COM", block_number:"001", name:"L004COM001", fr: "Pourquoi est-ce que tu apprends le français ?", en: "Why are you learning French?", words: ["pourquoi", "est", "ce", "que", "tu", "apprends", "le", "français"]},
+      {day:"004", type:"COM", block_number:"002", name:"L004COM002", fr: "Parce que je veux bien parler français .", en: "Because I want to speak French.", words: ["parce", "que", "je", "veux", "bien", "parler", "français"]},
+      {day:"004", type:"COM", block_number:"003", name:"L004COM003", fr: "Je veux pas parler avec toi", en: "I don’t want to talk with you", words: ["je", "veux", "pas", "parler", "avec", "toi"]},
+      {day:"004", type:"COM", block_number:"004", name:"L004COM004", fr: "Je ne veux pas parler avec vous", en: "Formal. I do not want to talk with you", words: ["je", "ne", "veux", "pas", "parler", "avec", "vous"]},
+      {day:"004", type:"COM", block_number:"005", name:"L004COM005", fr: "On parle français mais pas très bien .", en: "We speak French, but not very well.", words: ["on", "parle", "français", "mais", "pas", "très", "bien"]},
+      {day:"005", type:"QNA", block_number:"001", name:"L005QNA001", fr: "Depuis quand est-ce que tu apprends le français ?", en: "Since when do you learn French?", words: ["depuis", "quand", "est", "ce", "que", "tu", "apprends", "le", "français"]},
+      {day:"005", type:"MIP", block_number:"001", name:"L005MIP001", fr: "Depuis quand", en: "Since when", words: ["depuis", "quand"]},
+      {day:"005", type:"MIP", block_number:"002", name:"L005MIP002", fr: "un jour", en: "One day", words: ["un", "jour"]},
+      {day:"005", type:"MIP", block_number:"003", name:"L005MIP003", fr: "Depuis une semaine", en: "Since one week", words: ["depuis", "une", "semaine"]},
+      {day:"005", type:"MIP", block_number:"004", name:"L005MIP004", fr: "Depuis deux mois", en: "Since two months", words: ["depuis", "deux", "mois"]},
+      {day:"005", type:"MIP", block_number:"005", name:"L005MIP005", fr: "Depuis trois ans", en: "Since three years", words: ["depuis", "trois", "ans"]},
+      {day:"005", type:"COM", block_number:"001", name:"L005COM001", fr: "J’apprends le français depuis trois jours", en: "I’ve been learning French for three days", words: ["j", "apprends", "le", "français", "depuis", "trois", "jours"]},
+      {day:"005", type:"COM", block_number:"002", name:"L005COM002", fr: "Je parle français depuis une semaine, et toi ?", en: "I speak French for a week, and you?", words: ["je", "parle", "français", "depuis", "une", "semaine", "et", "toi"]},
+      {day:"005", type:"COM", block_number:"003", name:"L005COM003", fr: "Tu apprends le français depuis trois mois", en: "You have been learning French for three months", words: ["tu", "apprends", "le", "français", "depuis", "trois", "mois"]},
+      {day:"005", type:"COM", block_number:"004", name:"L005COM004", fr: "Pourquoi est-ce que tu veux apprendre le français ?", en: "Why do you want to learn French?", words: ["pourquoi", "est", "ce", "que", "tu", "veux", "apprendre", "le", "français"]},
+      {day:"005", type:"COM", block_number:"005", name:"L005COM005", fr: "On veut apprendre le français depuis deux ans", en: "We want to learn French for two years", words: ["on", "veut", "apprendre", "le", "français", "depuis", "deux", "ans"]},
+      {day:"006", type:"QNA", block_number:"001", name:"L006QNA001", fr: "Qu’est-ce que tu fais dans la vie ?", en: "What do you do for a living?", words: ["qu", "est", "ce", "que", "tu", "fais", "dans", "la", "vie"]},
+      {day:"006", type:"MIP", block_number:"001", name:"L006MIP001", fr: "tu fais", en: "you do", words: ["tu", "fais"]},
+      {day:"006", type:"MIP", block_number:"002", name:"L006MIP002", fr: "dans la vie", en: "in life", words: ["dans", "la", "vie"]},
+      {day:"006", type:"MIP", block_number:"003", name:"L006MIP003", fr: "vous faites", en: "formal. you do", words: ["vous", "faites"]},
+      {day:"006", type:"MIP", block_number:"004", name:"L006MIP004", fr: "je fais", en: "I do", words: ["je", "fais"]},
+      {day:"006", type:"MIP", block_number:"005", name:"L006MIP005", fr: "je suis", en: "I am", words: ["je", "suis"]},
+      {day:"006", type:"COM", block_number:"001", name:"L006COM001", fr: "Dans la vie, je suis prof, et toi ?", en: "In life, I am a teacher, and you?", words: ["dans", "la", "vie", "je", "suis", "prof", "et", "toi"]},
+      {day:"006", type:"COM", block_number:"002", name:"L006COM002", fr: "Je suis étudiant , je suis étudiante", en: "I am a student", words: ["je", "suis", "étudiant", "je", "suis", "étudiante"]},
+      {day:"006", type:"COM", block_number:"003", name:"L006COM003", fr: "Qu’est-ce que tu fais depuis une semaine ?", en: "What do you do for a week?", words: ["qu", "est", "ce", "que", "tu", "fais", "depuis", "une", "semaine"]},
+      {day:"006", type:"COM", block_number:"004", name:"L006COM004", fr: "Qu’est-ce que vous faites dans la vie ?", en: "formal. What you do for a living?", words: ["qu", "est", "ce", "que", "vous", "faites", "dans", "la", "vie"]},
+      {day:"006", type:"COM", block_number:"005", name:"L006COM005", fr: "Je peux parler depuis une semaine", en: "I can speak since one week.", words: ["je", "peux", "parler", "depuis", "une", "semaine"]},
+      {day:"007", type:"QNA", block_number:"001", name:"L007QNA001", fr: "D’où est-ce que tu viens ?", en: "Where are you from ?", words: ["d", "où", "est", "ce", "que", "tu", "viens"]},
+      {day:"007", type:"MIP", block_number:"001", name:"L007MIP001", fr: "d’ où", en: "from where", words: ["d", "où"]},
+      {day:"007", type:"MIP", block_number:"002", name:"L007MIP002", fr: "tu viens", en: "you come", words: ["tu", "viens"]},
+      {day:"007", type:"MIP", block_number:"003", name:"L007MIP003", fr: "vous venez", en: "formal. you come", words: ["vous", "venez"]},
+      {day:"007", type:"MIP", block_number:"004", name:"L007MIP004", fr: "je viens de San Francisco", en: "I come from San Francisco", words: ["je", "viens", "de", "san", "francisco"]},
+      {day:"007", type:"MIP", block_number:"005", name:"L007MIP005", fr: "je viens des États-Unis", en: "I’m from the United States of America", words: ["je", "viens", "des", "états", "unis"]},
+      {day:"007", type:"COM", block_number:"001", name:"L007COM001", fr: "Vous venez des États-Unis ? Oui et vous ?", en: "formal. Do you come from the US? Yes and you ?", words: ["vous", "venez", "des", "états", "unis", "oui", "et", "vous"]},
+      {day:"007", type:"COM", block_number:"002", name:"L007COM002", fr: "Je viens d’ Angleterre", en: "I come from England", words: ["je", "viens", "d", "angleterre"]},
+      {day:"007", type:"COM", block_number:"003", name:"L007COM003", fr: "Je viens de Paris, je suis Français et toi ?", en: "I come from Paris, I’m French and you?", words: ["je", "viens", "de", "paris", "je", "suis", "français", "et", "toi"]},
+      {day:"007", type:"COM", block_number:"004", name:"L007COM004", fr: "Tu viens d’ où ?", en: "Where do you come from ?", words: ["tu", "viens", "d", "où"]},
+      {day:"007", type:"COM", block_number:"005", name:"L007COM005", fr: "Je vais bien merci, mais toi, comment tu vas ?", en: "I’m fine, thank you, but you, how are you?", words: ["je", "vais", "bien", "merci", "mais", "toi", "comment", "tu", "vas"]},
+      {day:"008", type:"QNA", block_number:"001", name:"L008QNA001", fr: "Où tu es en ce moment ?", en: "Where are you at this moment?", words: ["où", "tu", "es", "en", "ce", "moment"]},
+      {day:"008", type:"MIP", block_number:"001", name:"L008MIP001", fr: "ce moment", en: "this moment", words: ["ce", "moment"]},
+      {day:"008", type:"MIP", block_number:"002", name:"L008MIP002", fr: "en fait", en: "in fact", words: ["en", "fait"]},
+      {day:"008", type:"MIP", block_number:"003", name:"L008MIP003", fr: "pas encore", en: "not yet", words: ["pas", "encore"]},
+      {day:"008", type:"MIP", block_number:"004", name:"L008MIP004", fr: "chez moi", en: "home, at my place", words: ["chez", "moi"]},
+      {day:"008", type:"MIP", block_number:"005", name:"L008MIP005", fr: "ici", en: "right here", words: ["ici"]},
+      {day:"008", type:"COM", block_number:"001", name:"L008COM001", fr: "Je suis chez moi . Et toi , tu es chez toi ?", en: "I am at my place . And you are at your place?", words: ["je", "suis", "chez", "moi", "et", "toi", "tu", "es", "chez", "toi"]},
+      {day:"008", type:"COM", block_number:"002", name:"L008COM002", fr: "Je vais chez moi mais je suis pas encore chez moi", en: "I’m going home but I am not at home", words: ["je", "vais", "chez", "moi", "mais", "je", "suis", "pas", "encore", "chez", "moi"]},
+      {day:"008", type:"COM", block_number:"003", name:"L008COM003", fr: "En fait je peux pas parler , je suis pas chez moi !", en: "In fact, I can not talk, I’m not at home!", words: ["en", "fait", "je", "peux", "pas", "parler", "je", "suis", "pas", "chez", "moi"]},
+      {day:"008", type:"COM", block_number:"004", name:"L008COM004", fr: "Tu es où ? Tu es à Paris ?", en: "Where are you ? Are you in Paris ?", words: ["tu", "es", "où", "tu", "es", "à", "paris"]},
+      {day:"008", type:"COM", block_number:"005", name:"L008COM005", fr: "En fait, tu es pas encore à San Francisco , c’est ça ?", en: "In fact, you’re not yet in San Francisco, that’s it?", words: ["en", "fait", "tu", "es", "pas", "encore", "à", "san", "francisco", "c", "est", "ça"]},
+      {day:"009", type:"QNA", block_number:"001", name:"L009QNA001", fr: "De quelle ville tu viens ?", en: "What city are you from?", words: ["de", "quelle", "ville", "tu", "viens"]},
+      {day:"009", type:"MIP", block_number:"001", name:"L009MIP001", fr: "une ville", en: "a city, a town", words: ["une", "ville"]},
+      {day:"009", type:"MIP", block_number:"002", name:"L009MIP002", fr: "quel problème", en: "which problem", words: ["quel", "problème"]},
+      {day:"009", type:"MIP", block_number:"003", name:"L009MIP003", fr: "quelle idée", en: "which idea", words: ["quelle", "idée"]},
+      {day:"009", type:"MIP", block_number:"004", name:"L009MIP004", fr: "près de", en: "near", words: ["près", "de"]},
+      {day:"009", type:"MIP", block_number:"005", name:"L009MIP005", fr: "c’est petit", en: "it is little", words: ["c", "est", "petit"]},
+      {day:"009", type:"COM", block_number:"001", name:"L009COM001", fr: "Je viens d’une petite ville près de San Francisco", en: "I come from a small town near San Francisco", words: ["je", "viens", "d", "une", "petite", "ville", "près", "de", "san", "francisco"]},
+      {day:"009", type:"COM", block_number:"002", name:"L009COM002", fr: "Un problème ? Quel problème ?", en: "A problem ? What problem ?", words: ["un", "problème", "quel", "problème"]},
+      {day:"009", type:"COM", block_number:"003", name:"L009COM003", fr: "Quelle bonne idée !", en: "What a good idea !", words: ["quelle", "bonne", "idée"]},
+      {day:"009", type:"COM", block_number:"004", name:"L009COM004", fr: "J’apprends le français depuis une petite semaine", en: "I learn French for a short week", words: ["j", "apprends", "le", "français", "depuis", "une", "petite", "semaine"]},
+      {day:"009", type:"COM", block_number:"005", name:"L009COM005", fr: "C’est très petit ici !", en: "It’s very small here!", words: ["c", "est", "très", "petit", "ici"]},
+      {day:"010", type:"QNA", block_number:"001", name:"L010QNA001", fr: "Dans quel pays est-ce que tu vis ?", en: "In what country do you live?", words: ["dans", "quel", "pays", "est", "ce", "que", "tu", "vis"]},
+      {day:"010", type:"MIP", block_number:"001", name:"L010MIP001", fr: "Je vis", en: "I live", words: ["je", "vis"]},
+      {day:"010", type:"MIP", block_number:"002", name:"L010MIP002", fr: "vous vivez", en: "formal. you live", words: ["vous", "vivez"]},
+      {day:"010", type:"MIP", block_number:"003", name:"L010MIP003", fr: "on vit", en: "we live", words: ["on", "vit"]},
+      {day:"010", type:"MIP", block_number:"004", name:"L010MIP004", fr: "longtemps", en: "long time", words: ["longtemps"]},
+      {day:"010", type:"MIP", block_number:"005", name:"L010MIP005", fr: "pour toi", en: "for you", words: ["pour", "toi"]},
+      {day:"010", type:"COM", block_number:"001", name:"L010COM001", fr: "Je vis en France depuis trois mois", en: "I’ve been living in France for three months", words: ["je", "vis","en", "france", "depuis", "trois", "mois"]},
+      {day:"010", type:"COM", block_number:"002", name:"L010COM002", fr: "Je vis au Canada depuis un an", en: "I live in Canada for one year", words: ["je", "vis", "au", "canada", "depuis", "un", "an"]},
+      {day:"010", type:"COM", block_number:"003", name:"L010COM003", fr: "Je vis aux États-Unis depuis longtemps", en: "I live in the US for a long time", words: ["je", "vis", "aux", "états", "unis", "depuis", "longtemps"]},
+      {day:"010", type:"COM", block_number:"004", name:"L010COM004", fr: "Je vis en France pour apprendre le français", en: "I live in France in order to learn French", words: ["je", "vis","en", "france", "pour", "apprendre", "le", "français"]},
+      {day:"010", type:"COM", block_number:"005", name:"L010COM005", fr: "On veut vivre en France", en: "We want to live in France", words: ["on", "veut", "vivre","en", "france"]},
+      {day:"011", type:"QNA", block_number:"001", name:"L011QNA001", fr: "Qu’est-ce que tu aimes faire ?", en: "What do you enjoy doing?", words: ["qu", "est", "ce", "que", "tu", "aimes", "faire"]},
+      {day:"011", type:"MIP", block_number:"001", name:"L011MIP001", fr: "faire", en: "to make, to do", words: ["faire"]},
+      {day:"011", type:"MIP", block_number:"002", name:"L011MIP002", fr: "il fait, elle fait", en: "he does, she does", words: ["il", "fait", "elle", "fait"]},
+      {day:"011", type:"MIP", block_number:"003", name:"L011MIP003", fr: "tu aimes", en: "you like", words: ["tu", "aimes"]},
+      {day:"011", type:"MIP", block_number:"004", name:"L011MIP004", fr: "le temps", en: "the weather, the time", words: ["le", "temps"]},
+      {day:"011", type:"MIP", block_number:"005", name:"L011MIP005", fr: "beau , belle", en: "beautiful, pretty", words: ["beau", "belle"]},
+      {day:"011", type:"COM", block_number:"001", name:"L011COM001", fr: "j’aime faire du français", en: "I like to do some French", words: ["j", "aime", "faire", "du", "français"]},
+      {day:"011", type:"COM", block_number:"002", name:"L011COM002", fr: "il fait beau", en: "the weather is nice", words: ["il", "fait", "beau"]},
+      {day:"011", type:"COM", block_number:"003", name:"L011COM003", fr: "quand il fait beau , je vais en ville", en: "when the weather is good, I go to the city", words: ["quand", "il", "fait", "beau", "je", "vais","en", "ville"]},
+      {day:"011", type:"COM", block_number:"004", name:"L011COM004", fr: "Quel temps il fait ?", en: "What is the weather like ?", words: ["quel", "temps", "il", "fait"]},
+      {day:"011", type:"COM", block_number:"005", name:"L011COM005", fr: "elle fait rien en ce moment .", en: "She’s not doing anything right now", words: ["elle", "fait", "rien","en", "ce", "moment"]},
+      {day:"012", type:"QNA", block_number:"001", name:"L012QNA001", fr: "Quel âge tu as ?", en: "How old are you ?", words: ["quel", "âge", "tu", "as"]},
+      {day:"012", type:"MIP", block_number:"001", name:"L012MIP001", fr: "tu as", en: "you have", words: ["tu", "as"]},
+      {day:"012", type:"MIP", block_number:"002", name:"L012MIP002", fr: "j’ai", en: "I have", words: ["j", "ai"]},
+      {day:"012", type:"MIP", block_number:"003", name:"L012MIP003", fr: "quel âge", en: "How old", words: ["quel", "âge"]},
+      {day:"012", type:"MIP", block_number:"004", name:"L012MIP004", fr: "trop vieux , trop vieille", en: "too old", words: ["trop", "vieux", "trop", "vieille"]},
+      {day:"012", type:"MIP", block_number:"005", name:"L012MIP005", fr: "vraiment jeune", en: "really young", words: ["vraiment", "jeune"]},
+      {day:"012", type:"COM", block_number:"001", name:"L012COM001", fr: "j’ai cinquante ans , je suis trop vieux !", en: "I’m fifty years old, I’m too old!", words: ["j", "ai", "cinquante", "ans", "je", "suis", "trop", "vieux"]},
+      {day:"012", type:"COM", block_number:"002", name:"L012COM002", fr: "Quelle âge avez - vous ?", en: "Formal. How old are you ?", words: ["quelle", "âge", "avez", "vous"]},
+      {day:"012", type:"COM", block_number:"003", name:"L012COM003", fr: "tu as quarante ans , tu es vraiment jeune !", en: "you’re forty, you’re really young!", words: ["tu", "as", "quarante", "ans", "tu", "es", "vraiment", "jeune"]},
+      {day:"012", type:"COM", block_number:"004", name:"L012COM004", fr: "Tu es jeune , non ? quel âge tu as ?", en: "You’re young, right? How old are you ?", words: ["tu", "es", "jeune", "non", "quel", "âge", "tu", "as"]},
+      {day:"012", type:"COM", block_number:"005", name:"L012COM005", fr: "Tu es encore jeune , tu peux apprendre le français !", en: "You’re still young, you can learn French!", words: ["tu", "es", "encore", "jeune", "tu", "peux", "apprendre", "le", "français"]},
+      {day:"013", type:"QNA", block_number:"001", name:"L013QNA001", fr: "Comment tu t’ appelles ?", en: "What’s your name ?", words: ["comment", "tu", "t", "appelles"]},
+      {day:"013", type:"MIP", block_number:"001", name:"L013MIP001", fr: "je m’appelle", en: "My name is", words: ["je", "m", "appelle"]},
+      {day:"013", type:"MIP", block_number:"002", name:"L013MIP002", fr: "appeler quelqu’un", en: "to call someone", words: ["appeler", "quelqu", "un"]},
+      {day:"013", type:"MIP", block_number:"003", name:"L013MIP003", fr: "tu t’appelles", en: "you’re called", words: ["tu", "t", "appelles"]},
+      {day:"013", type:"MIP", block_number:"004", name:"L013MIP004", fr: "vous vous appelez", en: "formal. you are called", words: ["vous", "vous", "appelez"]},
+      {day:"013", type:"MIP", block_number:"005", name:"L013MIP005", fr: "ça s’appelle", en: "it’s called", words: ["ça", "s", "appelle"]},
+      {day:"013", type:"COM", block_number:"001", name:"L013COM001", fr: "Je m’appelle Tom, et toi ?", en: "My name is Tom, and you?", words: ["je", "m", "appelle", "tom", "et", "toi"]},
+      {day:"013", type:"COM", block_number:"002", name:"L013COM002", fr: "Comment est-ce que vous vous appelez ?", en: "What’s your name ?", words: ["comment", "est", "ce", "que", "vous", "vous", "appelez"]},
+      {day:"013", type:"COM", block_number:"003", name:"L013COM003", fr: "Je m’appelle Nicholas, mais appelle moi Nick", en: "My name is Nicholas, but call me Nick", words: ["je", "m", "appelle", "nicholas", "mais", "appelle", "moi", "nick"]},
+      {day:"013", type:"COM", block_number:"004", name:"L013COM004", fr: "Appelle moi quand tu veux !", en: "Call me whenever you want !", words: ["appelle", "moi", "quand", "tu", "veux"]},
+      {day:"013", type:"COM", block_number:"005", name:"L013COM005", fr: "La ville s’appelle Lyon", en: "The city is called Lyon", words: ["la", "ville", "s", "appelle", "lyon"]},
+      {day:"014", type:"QNA", block_number:"001", name:"L014QNA001", fr: "Est-ce que tu as des animaux de compagnie ?", en: "Do you have any pets?", words: ["est", "ce", "que", "tu", "as", "des", "animaux", "de", "compagnie"]},
+      {day:"014", type:"MIP", block_number:"001", name:"L014MIP001", fr: "vous avez", en: "Formal. you have", words: ["vous", "avez"]},
+      {day:"014", type:"MIP", block_number:"002", name:"L014MIP002", fr: "un animal, des animaux", en: "one animal, animals", words: ["un", "animal", "des", "animaux"]},
+      {day:"014", type:"MIP", block_number:"003", name:"L014MIP003", fr: "j’ai de la compagnie", en: "I have company", words: ["j", "ai", "de", "la", "compagnie"]},
+      {day:"014", type:"MIP", block_number:"004", name:"L014MIP004", fr: "être seul", en: "to be alone", words: ["être", "seul"]},
+      {day:"014", type:"MIP", block_number:"005", name:"L014MIP005", fr: "tout seul, toute seule", en: "all alone", words: ["tout", "seul", "toute", "seule"]},
+      {day:"014", type:"COM", block_number:"001", name:"L014COM001", fr: "Oui, j’ai un chat et un chien", en: "Yes, I have a cat and a dog", words: ["oui", "j", "ai", "un", "chat", "et", "un", "chien"]},
+      {day:"014", type:"COM", block_number:"002", name:"L014COM002", fr: "Tu es seule chez toi ? Non, j’ai de la compagnie", en: "Are you alone at your place ? No, I have company", words: ["tu", "es", "seule", "chez", "toi", "non", "j", "ai", "de", "la", "compagnie"]},
+      {day:"014", type:"COM", block_number:"003", name:"L014COM003", fr: "Est-ce que vous avez des animaux de compagnie ?", en: "Do you have any pets?", words: ["est", "ce", "que", "vous", "avez", "des", "animaux", "de", "compagnie"]},
+      {day:"014", type:"COM", block_number:"004", name:"L014COM004", fr: "Je suis pas toute seule , j’ai deux chats et trois chiens !", en: "Feminine. I am not alone, I have two cats and three dogs!", words: ["je", "suis", "pas", "toute", "seule", "j", "ai", "deux", "chats", "et", "trois", "chiens"]},
+      {day:"014", type:"COM", block_number:"005", name:"L014COM005", fr: "Comment s’appelle ton chien ?", en: "What is your dog’s name ?", words: ["comment", "s", "appelle", "ton", "chien"]},
+      {day:"015", type:"QNA", block_number:"001", name:"L015QNA001", fr: "Qu’est-ce que tu as fait hier ?", en: "What did you do yesterday ?", words: ["qu", "est", "ce", "que", "tu", "as", "fait", "hier"]},
+      {day:"015", type:"MIP", block_number:"001", name:"L015MIP001", fr: "tu as fait", en: "you did", words: ["tu", "as", "fait"]},
+      {day:"015", type:"MIP", block_number:"002", name:"L015MIP002", fr: "j’ai fait", en: "I did", words: ["j", "ai", "fait"]},
+      {day:"015", type:"MIP", block_number:"003", name:"L015MIP003", fr: "faire de quelquechose", en: "tp do something", words: ["faire", "de", "quelquechose"]},
+      {day:"015", type:"MIP", block_number:"004", name:"L015MIP004", fr: "grand , grande", en: "tall", words: ["grand", "grande"]},
+      {day:"015", type:"MIP", block_number:"005", name:"L015MIP005", fr: "pas grand chose", en: "not much", words: ["pas", "grand", "chose"]},
+      {day:"015", type:"COM", block_number:"001", name:"L015COM001", fr: "Pas grand chose, et toi ? Tu as fait quoi ?", en: "Not much and you ? What did you do ?", words: ["pas", "grand", "chose", "et", "toi", "tu", "as", "fait", "quoi"]},
+      {day:"015", type:"COM", block_number:"002", name:"L015COM002", fr: "Je n’ai pas fait grand chose et vous ?", en: "Formal. I did not do much and you?", words: ["je", "n", "ai", "pas", "fait", "grand", "chose", "et", "vous"]},
+      {day:"015", type:"COM", block_number:"003", name:"L015COM003", fr: "Tu as fait quelque chose hier ?", en: "Did you do something yesterday?", words: ["tu", "as", "fait", "quelque", "chose", "hier"]},
+      {day:"015", type:"COM", block_number:"004", name:"L015COM004", fr: "Qu’est-ce que tu as fait ?", en: "What did you do ?", words: ["qu", "est", "ce", "que", "tu", "as", "fait"]},
+      {day:"015", type:"COM", block_number:"005", name:"L015COM005", fr: "Hier j’ai fait du français chez moi", en: "Yesterday I did some French at home", words: ["hier", "j", "ai", "fait", "du", "français", "chez", "moi"]},
+      {day:"016", type:"QNA", block_number:"001", name:"L016QNA001", fr: "Est-ce que tu es marié.e ?", en: "Are you married ?", words: ["est", "ce", "que", "tu", "es", "marié", "e"]},
+      {day:"016", type:"MIP", block_number:"001", name:"L016MIP001", fr: "mon petit ami , ma petite amie", en: "my boyfriend, my girlfriend", words: ["mon", "petit", "ami", "ma", "petite", "amie"]},
+      {day:"016", type:"MIP", block_number:"002", name:"L016MIP002", fr: "je voudrais", en: "I would like", words: ["je", "voudrais"]},
+      {day:"016", type:"MIP", block_number:"003", name:"L016MIP003", fr: "se marier", en: "to get married", words: ["se", "marier"]},
+      {day:"016", type:"MIP", block_number:"004", name:"L016MIP004", fr: "peut-être", en: "perhaps", words: ["peut", "être"]},
+      {day:"016", type:"MIP", block_number:"005", name:"L016MIP005", fr: "il peut , elle peut", en: "he can, she can", words: ["il", "peut", "elle", "peut"]},
+      {day:"016", type:"COM", block_number:"001", name:"L016COM001", fr: "Oui, je suis marié depuis quatre ans", en: "Yes, I’ve been married for four years", words: ["oui", "je", "suis", "marié", "depuis", "quatre", "ans"]},
+      {day:"016", type:"COM", block_number:"002", name:"L016COM002", fr: "Je voudrais me marier un jour peut-être", en: "I would like to get married one day maybe", words: ["je", "voudrais", "me", "marier", "un", "jour", "peut", "être"]},
+      {day:"016", type:"COM", block_number:"003", name:"L016COM003", fr: "Je suis pas marié, mais j’ai une petite amie", en: "I’m not married, but I have a girlfriend", words: ["je", "suis", "pas", "marié", "mais", "j", "ai", "une", "petite", "amie"]},
+      {day:"016", type:"COM", block_number:"004", name:"L016COM004", fr: "On voudrait se marier dans un an", en: "We would like to get married in a year", words: ["on", "voudrait", "se", "marier", "dans", "un", "an"]},
+      {day:"016", type:"COM", block_number:"005", name:"L016COM005", fr: "Ma petite amie voudrait se marier en France", en: "My girlfriend wants to get married in France", words: ["ma", "petite", "amie", "voudrait", "se", "marier","en", "france"]},
+      {day:"017", type:"QNA", block_number:"001", name:"L017QNA001", fr: "Où est-ce que tu apprends le français ?", en: "Where dare you learning French?", words: ["où", "est", "ce", "que", "tu", "apprends", "le", "français"]},
+      {day:"017", type:"MIP", block_number:"001", name:"L017MIP001", fr: "je veux aller", en: "I want to go", words: ["je", "veux", "aller"]},
+      {day:"017", type:"MIP", block_number:"002", name:"L017MIP002", fr: "comme toujours", en: "as always", words: ["comme", "toujours"]},
+      {day:"017", type:"MIP", block_number:"003", name:"L017MIP003", fr: "je sais parler", en: "I know how to speak", words: ["je", "sais", "parler"]},
+      {day:"017", type:"MIP", block_number:"004", name:"L017MIP004", fr: "prendre des cours", en: "to take classes", words: ["prendre", "des", "cours"]},
+      {day:"017", type:"MIP", block_number:"005", name:"L017MIP005", fr: "parfois", en: "sometimes", words: ["parfois"]},
+      {day:"017", type:"COM", block_number:"001", name:"L017COM001", fr: "J’apprends le français sur internet", en: "I learn French on the Internet", words: ["j", "apprends", "le", "français", "sur", "internet"]},
+      {day:"017", type:"COM", block_number:"002", name:"L017COM002", fr: "Parfois j’apprends chez moi , parfois je parle avec un prof", en: "Sometimes I learn at home, sometimes I talk with a teacher", words: ["parfois", "j", "apprends", "chez", "moi", "parfois", "je", "parle", "avec", "un", "prof"]},
+      {day:"017", type:"COM", block_number:"003", name:"L017COM003", fr: "Tu fais toujours du français ? Oui, oui, toujours.", en: "Are you still learning French? Yes, still.", words: ["tu", "fais", "toujours", "du", "français", "oui", "oui", "toujours"]},
+      {day:"017", type:"COM", block_number:"004", name:"L017COM004", fr: "On apprend des choses en français", en: "We learn things in French", words: ["on", "apprend", "des", "choses","en", "français"]},
+      {day:"017", type:"COM", block_number:"005", name:"L017COM005", fr: "J’apprends tout ça pour rien !", en: "I’m learning all of that for nothing!", words: ["j", "apprends", "tout", "ça", "pour", "rien"]},
+      {day:"018", type:"QNA", block_number:"001", name:"L018QNA001", fr: "Est-ce que tu as un prof de français ?", en: "Do you have a French teacher?", words: ["est", "ce", "que", "tu", "as", "un", "prof", "de", "français"]},
+      {day:"018", type:"MIP", block_number:"001", name:"L018MIP001", fr: "utiliser", en: "to use", words: ["utiliser"]},
+      {day:"018", type:"MIP", block_number:"002", name:"L018MIP002", fr: "j’utilise", en: "I use", words: ["j", "utilise"]},
+      {day:"018", type:"MIP", block_number:"003", name:"L018MIP003", fr: "difficile", en: "difficult", words: ["difficile"]},
+      {day:"018", type:"MIP", block_number:"004", name:"L018MIP004", fr: "facile", en: "easy", words: ["facile"]},
+      {day:"018", type:"MIP", block_number:"005", name:"L018MIP005", fr: "un homme , une femme", en: "a man, a woman", words: ["un", "homme", "une", "femme"]},
+      {day:"018", type:"COM", block_number:"001", name:"L018COM001", fr: "Oui, j’ai une prof de français. C’est une femme .", en: "Yes, I have a French teacher. She’s a woman .", words: ["oui", "j", "ai", "une", "prof", "de", "français", "c", "est", "une", "femme"]},
+      {day:"018", type:"COM", block_number:"002", name:"L018COM002", fr: "Pas vraiment en fait, c’est vraiment difficile .", en: "Not really actually, it’s really difficult.", words: ["pas", "vraiment","en", "fait", "c", "est", "vraiment", "difficile"]},
+      {day:"018", type:"COM", block_number:"003", name:"L018COM003", fr: "J’ai pas de prof, mais je parle à mon chat .", en: "I don’t have a teacher, but I talk to my cat.", words: ["j", "ai", "pas", "de", "prof", "mais", "je", "parle", "à", "mon", "chat"]},
+      {day:"018", type:"COM", block_number:"004", name:"L018COM004", fr: "Apprendre le français, c’est facile !", en: "Learning French, it’s easy!", words: ["apprendre", "le", "français", "c", "est", "facile"]},
+      {day:"018", type:"COM", block_number:"005", name:"L018COM005", fr: "C’est facile d’apprendre le français ?", en: "It’s easy to learn French?", words: ["c", "est", "facile", "d", "apprendre", "le", "français"]},
+      {day:"019", type:"QNA", block_number:"001", name:"L019QNA001", fr: "Quelle appli est-ce que tu utilises pour apprendre le français ?", en: "What app do you use to learn French?", words: ["quelle", "appli", "est", "ce", "que", "tu", "utilises", "pour", "apprendre", "le", "français"]},
+      {day:"019", type:"MIP", block_number:"001", name:"L019MIP001", fr: "une app , mon app", en: "an app, my app", words: ["une", "app", "mon", "app"]},
+      {day:"019", type:"MIP", block_number:"002", name:"L019MIP002", fr: "j’utilise pas d’app", en: "I don’t use any app", words: ["j", "utilise", "pas", "d", "app"]},
+      {day:"019", type:"MIP", block_number:"003", name:"L019MIP003", fr: "un outil", en: "a tool", words: ["un", "outil"]},
+      {day:"019", type:"MIP", block_number:"004", name:"L019MIP004", fr: "j’ai beaucoup d’outils", en: "I have a lot of tools", words: ["j", "ai", "beaucoup", "d", "outils"]},
+      {day:"019", type:"MIP", block_number:"005", name:"L019MIP005", fr: "comprendre facilement", en: "to understand easily", words: ["comprendre", "facilement"]},
+      {day:"019", type:"COM", block_number:"001", name:"L019COM001", fr: "J’utilise beaucoup d’applis sur mon téléphone", en: "I use a lot of apps on my phone", words: ["j", "utilise", "beaucoup", "d", "applis", "sur", "mon", "téléphone"]},
+      {day:"019", type:"COM", block_number:"002", name:"L019COM002", fr: "En ce moment, j’apprends avec des cours sur internet", en: "Recently, I learn with online classes", words: ["en", "ce", "moment", "j", "apprends", "avec", "des", "cours", "sur", "internet"]},
+      {day:"019", type:"COM", block_number:"003", name:"L019COM003", fr: "C’est pas facile de comprendre, je comprends difficilement", en: "It is not easy to understand, I hardly understand", words: ["c", "est", "pas", "facile", "de", "comprendre", "je", "comprends", "difficilement"]},
+      {day:"019", type:"COM", block_number:"004", name:"L019COM004", fr: "Tu apprends bien ! Tu comprends facilement", en: "You learn well! You understand easily", words: ["tu", "apprends", "bien", "tu", "comprends", "facilement"]},
+      {day:"019", type:"COM", block_number:"005", name:"L019COM005", fr: "Vous avez beaucoup d’animaux ?", en: "Formal. Do you have many animals?", words: ["vous", "avez", "beaucoup", "d", "animaux"]},
+      {day:"020", type:"QNA", block_number:"001", name:"L020QNA001", fr: "Est-ce que tu parles une autre langue ?", en: "Do you speak another language?", words: ["est", "ce", "que", "tu", "parles", "une", "autre", "langue"]},
+      {day:"020", type:"MIP", block_number:"001", name:"L020MIP001", fr: "une autre langue", en: "another language", words: ["une", "autre", "langue"]},
+      {day:"020", type:"MIP", block_number:"002", name:"L020MIP002", fr: "il y a longtemps", en: "a long time ago", words: ["il", "y", "a", "longtemps"]},
+      {day:"020", type:"MIP", block_number:"003", name:"L020MIP003", fr: "aussi", en: "also, too", words: ["aussi"]},
+      {day:"020", type:"MIP", block_number:"004", name:"L020MIP004", fr: "tu as fait", en: "you did", words: ["tu", "as", "fait"]},
+      {day:"020", type:"MIP", block_number:"005", name:"L020MIP005", fr: "on a fait", en: "we did", words: ["on", "a", "fait"]},
+      {day:"020", type:"COM", block_number:"001", name:"L020COM001", fr: "Oui, je parle aussi un peu espagnol", en: "Yes, I also speak a little Spanish", words: ["oui", "je", "parle", "aussi", "un", "peu", "espagnol"]},
+      {day:"020", type:"COM", block_number:"002", name:"L020COM002", fr: "J’ai fait du français il y a longtemps", en: "I did French a long time ago", words: ["j", "ai", "fait", "du", "français", "il", "y", "a", "longtemps"]},
+      {day:"020", type:"COM", block_number:"003", name:"L020COM003", fr: "Avec ma femme on parle italien et anglais", en: "With my wife, we ​​speak Italian and English", words: ["avec", "ma", "femme", "on", "parle", "italien", "et", "anglais"]},
+      {day:"020", type:"COM", block_number:"004", name:"L020COM004", fr: "On a fait de l’italien il y a un an", en: "We did some Italian a year ago", words: ["on", "a", "fait", "de", "l", "italien", "il", "y", "a", "un", "an"]},
+      {day:"020", type:"COM", block_number:"005", name:"L020COM005", fr: "J’ai fait un peu de français hier", en: "I did some French yesterday", words: ["j", "ai", "fait", "un", "peu", "de", "français", "hier"]},
+      {day:"021", type:"QNA", block_number:"001", name:"L021QNA001", fr: "Quelle langue est-ce que tu as appris au lycée ?", en: "What language did you learn in high school?", words: ["quelle", "langue", "est", "ce", "que", "tu", "as", "appris", "au", "lycée"]},
+      {day:"021", type:"MIP", block_number:"001", name:"L021MIP001", fr: "le lycée", en: "high school", words: ["le", "lycée"]},
+      {day:"021", type:"MIP", block_number:"002", name:"L021MIP002", fr: "j’ai appris", en: "I learned", words: ["j", "ai", "appris"]},
+      {day:"021", type:"MIP", block_number:"003", name:"L021MIP003", fr: "combien", en: "how much", words: ["combien"]},
+      {day:"021", type:"MIP", block_number:"004", name:"L021MIP004", fr: "j’ai compris", en: "I understood", words: ["j", "ai", "compris"]},
+      {day:"021", type:"MIP", block_number:"005", name:"L021MIP005", fr: "une fois", en: "Once", words: ["une", "fois"]},
+      {day:"021", type:"COM", block_number:"001", name:"L021COM001", fr: "Au lycée, j’ai appris l’espagnol.", en: "In high school, I’ve learned Spanish.", words: ["au", "lycée", "j", "ai", "appris", "l", "espagnol"]},
+      {day:"021", type:"COM", block_number:"002", name:"L021COM002", fr: "Encore une fois ? J’ai pas compris .", en: "One more time? I did not understand.", words: ["encore", "une", "fois", "j", "ai", "pas", "compris"]},
+      {day:"021", type:"COM", block_number:"003", name:"L021COM003", fr: "Qu’est-ce que tu as appris aujourd’hui ?", en: "What have you learned today?", words: ["qu", "est", "ce", "que", "tu", "as", "appris", "aujourd", "hui"]},
+      {day:"021", type:"COM", block_number:"004", name:"L021COM004", fr: "Combien de fois tu as fait ça ?", en: "How many times did you do that?", words: ["combien", "de", "fois", "tu", "as", "fait", "ça"]},
+      {day:"021", type:"COM", block_number:"005", name:"L021COM005", fr: "Combien d’animaux de compagnie vous avez ?", en: "How many pets do you have?", words: ["combien", "d", "animaux", "de", "compagnie", "vous", "avez"]},
+      {day:"022", type:"QNA", block_number:"001", name:"L022QNA001", fr: "Qu’est-ce que tu as étudié à l’université ?", en: "What did you study at university?", words: ["qu", "est", "ce", "que", "tu", "as", "étudié", "à", "l", "université"]},
+      {day:"022", type:"MIP", block_number:"001", name:"L022MIP001", fr: "étudier", en: "to study", words: ["étudier"]},
+      {day:"022", type:"MIP", block_number:"002", name:"L022MIP002", fr: "à l’université", en: "at University", words: ["à", "l", "université"]},
+      {day:"022", type:"MIP", block_number:"003", name:"L022MIP003", fr: "au travail", en: "at work", words: ["au", "travail"]},
+      {day:"022", type:"MIP", block_number:"004", name:"L022MIP004", fr: "il est différent , elle est différente", en: "he’s different, she’s different", words: ["il", "est", "différent", "elle", "est", "différente"]},
+      {day:"022", type:"MIP", block_number:"005", name:"L022MIP005", fr: "vous êtes", en: "Formal. you are", words: ["vous", "êtes"]},
+      {day:"022", type:"COM", block_number:"001", name:"L022COM001", fr: "À l’Université j’ai étudié beaucoup de choses différentes", en: "At University I studied many different things", words: ["à", "l", "université", "j", "ai", "étudié", "beaucoup", "de", "choses", "différentes"]},
+      {day:"022", type:"COM", block_number:"002", name:"L022COM002", fr: "Je ne suis pas allé à l’université mais j’ai appris le français chez moi", en: "I did not go to college but I learned French at home", words: ["je", "ne", "suis", "pas", "allé", "à", "l", "université", "mais", "j", "ai", "appris", "le", "français", "chez", "moi"]},
+      {day:"022", type:"COM", block_number:"003", name:"L022COM003", fr: "Vous êtes très différents , il est vraiment vieux , tu es pas vieille du tout !", en: "You are very different, he is really old, you’re not old at all!", words: ["vous", "êtes", "très", "différents", "il", "est", "vraiment", "vieux", "tu", "es", "pas", "vieille", "du", "tout"]},
+      {day:"022", type:"COM", block_number:"004", name:"L022COM004", fr: "Je vais au travail tous les jours", en: "I go to work every day", words: ["je", "vais", "au", "travail", "tous", "les", "jours"]},
+      {day:"022", type:"COM", block_number:"005", name:"L022COM005", fr: "Je suis encore étudiant , je vais à l’université et j’étudie le français", en: "I am still a student, I go to university and I study French", words: ["je", "suis", "encore", "étudiant", "je", "vais", "à", "l", "université", "et", "j", "étudie", "le", "français"]},
+      {day:"023", type:"QNA", block_number:"001", name:"L023QNA001", fr: "Qu’est-ce que ton ou ta partenaire fait dans la vie ?", en: "What does your partner do for a living?", words: ["qu", "est", "ce", "que", "ton", "ou", "ta", "partenaire", "fait", "dans", "la", "vie"]},
+      {day:"023", type:"MIP", block_number:"001", name:"L023MIP001", fr: "après demain", en: "after tomorrow", words: ["après", "demain"]},
+      {day:"023", type:"MIP", block_number:"002", name:"L023MIP002", fr: "alors ...", en: "so, well ...", words: ["alors"]},
+      {day:"023", type:"MIP", block_number:"003", name:"L023MIP003", fr: "aimer", en: "to love", words: ["aimer"]},
+      {day:"023", type:"MIP", block_number:"004", name:"L023MIP004", fr: "j’aime bien", en: "I like", words: ["j", "aime", "bien"]},
+      {day:"023", type:"MIP", block_number:"005", name:"L023MIP005", fr: "par exemple", en: "for example", words: ["par", "exemple"]},
+      {day:"023", type:"COM", block_number:"001", name:"L023COM001", fr: "Alors, ma femme est prof d’Anglais , mon mari est prof d’Anglais", en: "So, my wife is English teacher, my husband is English teacher", words: ["alors", "ma", "femme", "est", "prof", "d", "anglais", "mon", "mari", "est", "prof", "d", "anglais"]},
+      {day:"023", type:"COM", block_number:"002", name:"L023COM002", fr: "Elle aime bien son travail mais elle veut faire autre chose", en: "She likes her work but she wants to do something else", words: ["elle", "aime", "bien", "son", "travail", "mais", "elle", "veut", "faire", "autre", "chose"]},
+      {day:"023", type:"COM", block_number:"003", name:"L023COM003", fr: "J’aime bien étudier , par exemple j’aime beaucoup aller à l’université", en: "I like to study, for example I like a lot going to university", words: ["j", "aime", "bien", "étudier", "par", "exemple", "j", "aime", "beaucoup", "aller", "à", "l", "université"]},
+      {day:"023", type:"COM", block_number:"004", name:"L023COM004", fr: "J’aime quand ma femme ne travaille pas", en: "I love when my wife is not working", words: ["j", "aime", "quand", "ma", "femme", "ne", "travaille", "pas"]},
+      {day:"023", type:"COM", block_number:"005", name:"L023COM005", fr: "Après demain je vais en France , je vais travailler à Paris", en: "The day after tomorrow I’m going to France, I will work in Paris", words: ["après", "demain", "je", "vais","en", "france", "je", "vais", "travailler", "à", "paris"]},
+      {day:"024", type:"QNA", block_number:"001", name:"L024QNA001", fr: "Est-ce que tu vis dans une maison ou un appartement ?", en: "Do you live in a house or apartment?", words: ["est", "ce", "que", "tu", "vis", "dans", "une", "maison", "ou", "un", "appartement"]},
+      {day:"024", type:"MIP", block_number:"001", name:"L024MIP001", fr: "une grande maison", en: "a big house", words: ["une", "grande", "maison"]},
+      {day:"024", type:"MIP", block_number:"002", name:"L024MIP002", fr: "un petit appartement", en: "a small apartment", words: ["un", "petit", "appartement"]},
+      {day:"024", type:"MIP", block_number:"003", name:"L024MIP003", fr: "loin", en: "far away", words: ["loin"]},
+      {day:"024", type:"MIP", block_number:"004", name:"L024MIP004", fr: "dans le Nord - Ouest", en: "in the North - West", words: ["dans", "le", "nord", "ouest"]},
+      {day:"024", type:"MIP", block_number:"005", name:"L024MIP005", fr: "au Sud - Est de Paris", en: "South-East from Paris", words: ["au", "sud", "est", "de", "paris"]},
+      {day:"024", type:"COM", block_number:"001", name:"L024COM001", fr: "Je vis dans une maison au Sud - Est de San-Francisco", en: "I live in a house South-East from San Francisco", words: ["je", "vis", "dans", "une", "maison", "au", "sud", "est", "de", "san", "francisco"]},
+      {day:"024", type:"COM", block_number:"002", name:"L024COM002", fr: "Ma maison est dans le Nord - Est de la France", en: "My house is in the North-East of France", words: ["ma", "maison", "est", "dans", "le", "nord", "est", "de", "la", "france"]},
+      {day:"024", type:"COM", block_number:"003", name:"L024COM003", fr: "Je vis avec mon mari et mon chien dans une grande maison", en: "I live with my husband and my dog ​​in a big house", words: ["je", "vis", "avec", "mon", "mari", "et", "mon", "chien", "dans", "une", "grande", "maison"]},
+      {day:"024", type:"COM", block_number:"004", name:"L024COM004", fr: "Tu vis loin d’ici ?", en: "Do you live far from here?", words: ["tu", "vis", "loin", "d", "ici"]},
+      {day:"024", type:"COM", block_number:"005", name:"L024COM005", fr: "Est-ce que vous vivez seule ?", en: "Formal. Feminine. Do you live alone?", words: ["est", "ce", "que", "vous", "vivez", "seule"]},
+      {day:"025", type:"QNA", block_number:"001", name:"L025QNA001", fr: "Excusez-moi, je cherche un bon restaurant végétarien.", en: "Excuse me, I’m looking for a good vegetarian restaurant.", words: ["excusez", "moi", "je", "cherche", "un", "bon", "restaurant", "végétarien"]},
+      {day:"025", type:"MIP", block_number:"001", name:"L025MIP001", fr: "excusez-moi", en: "Formal. excuse me", words: ["excusez", "moi"]},
+      {day:"025", type:"MIP", block_number:"002", name:"L025MIP002", fr: "un restaurant végétarien", en: "a vegetarian restaurant", words: ["un", "restaurant", "végétarien"]},
+      {day:"025", type:"MIP", block_number:"003", name:"L025MIP003", fr: "un bon plat", en: "a good meal, dish", words: ["un", "bon", "plat"]},
+      {day:"025", type:"MIP", block_number:"004", name:"L025MIP004", fr: "je connais", en: "I know, I’m aware of", words: ["je", "connais"]},
+      {day:"025", type:"MIP", block_number:"005", name:"L025MIP005", fr: "je mange", en: "I eat", words: ["je", "mange"]},
+      {day:"025", type:"COM", block_number:"001", name:"L025COM001", fr: "Oui, je connais un restaurant pas loin", en: "Yes, I know a restaurant not far away", words: ["oui", "je", "connais", "un", "restaurant", "pas", "loin"]},
+      {day:"025", type:"COM", block_number:"002", name:"L025COM002", fr: "Je mange pas beaucoup de viande", en: "I eat a lot of meat", words: ["je", "mange", "pas", "beaucoup", "de", "viande"]},
+      {day:"025", type:"COM", block_number:"003", name:"L025COM003", fr: "Excusez-moi, je ne mange pas de viande, je suis végétarien", en: "Formal. Excuse me, I do not eat meat, I’m a vegetarian", words: ["excusez", "moi", "je", "ne", "mange", "pas", "de", "viande", "je", "suis", "végétarien"]},
+      {day:"025", type:"COM", block_number:"004", name:"L025COM004", fr: "Et Paris, tu connais bien ?", en: "And Paris, do you know well?", words: ["et", "paris", "tu", "connais", "bien"]},
+      {day:"025", type:"COM", block_number:"005", name:"L025COM005", fr: "Est-ce que tu connais un bon végétarien près de chez toi ?", en: "Do you know a good vegetarian near your place?", words: ["est", "ce", "que", "tu", "connais", "un", "bon", "végétarien", "près", "de", "chez", "toi"]},
+      {day:"026", type:"QNA", block_number:"001", name:"L026QNA001", fr: "Qu’est-ce que tu vas faire ce week-end ?", en: "What are you going to do this weekend ?", words: ["qu", "est", "ce", "que", "tu", "vas", "faire", "ce", "week", "end"]},
+      {day:"026", type:"MIP", block_number:"001", name:"L026MIP001", fr: "je vais aller à", en: "I am going to go to", words: ["je", "vais", "aller", "à"]},
+      {day:"026", type:"MIP", block_number:"002", name:"L026MIP002", fr: "se promener", en: "to take a walk", words: ["se", "promener"]},
+      {day:"026", type:"MIP", block_number:"003", name:"L026MIP003", fr: "je me promène", en: "I walk", words: ["je", "me", "promène"]},
+      {day:"026", type:"MIP", block_number:"004", name:"L026MIP004", fr: "dire", en: "to say", words: ["dire"]},
+      {day:"026", type:"MIP", block_number:"005", name:"L026MIP005", fr: "je dis", en: "I say", words: ["je", "dis"]},
+      {day:"026", type:"COM", block_number:"001", name:"L026COM001", fr: "Si il fait beau, je vais aller me promener près de chez moi", en: "If the weather is good, I’ll go for a walk near my place", words: ["si", "il", "fait", "beau", "je", "vais", "aller", "me", "promener", "près", "de", "chez", "moi"]},
+      {day:"026", type:"COM", block_number:"002", name:"L026COM002", fr: "je vais aller me promener, je prends le chien avec moi, je vais le promener", en: "I’ll take a walk, I take the dog with me, I will walk", words: ["je", "vais", "aller", "me", "promener", "je", "prends", "le", "chien", "avec", "moi", "je", "vais", "le", "promener"]},
+      {day:"026", type:"COM", block_number:"003", name:"L026COM003", fr: "Qu’est-ce que tu as dit ? Tu peux répéter ?", en: "What did you say ? Can you repeat ?", words: ["qu", "est", "ce", "que", "tu", "as", "dit", "tu", "peux", "répéter"]},
+      {day:"026", type:"COM", block_number:"004", name:"L026COM004", fr: "Tu vas tout me dire une fois à la maison !", en: "You’re gonna tell me everything once at home!", words: ["tu", "vas", "tout", "me", "dire", "une", "fois", "à", "la", "maison"]},
+      {day:"026", type:"COM", block_number:"005", name:"L026COM005", fr: "J’ai fait un plat végétarien une seule fois dans ma vie .", en: "I made a vegetarian meal once in my life.", words: ["j", "ai", "fait", "un", "plat", "végétarien", "une", "seule", "fois", "dans", "ma", "vie"]},
+      {day:"027", type:"QNA", block_number:"001", name:"L027QNA001", fr: "Qu’est-ce que tu as fait hier soir ?", en: "What did you do last night?", words: ["qu", "est", "ce", "que", "tu", "as", "fait", "hier", "soir"]},
+      {day:"027", type:"MIP", block_number:"001", name:"L027MIP001", fr: "mes enfants", en: "my children", words: ["mes", "enfants"]},
+      {day:"027", type:"MIP", block_number:"002", name:"L027MIP002", fr: "ma fille , mon fils", en: "my daughter, my son", words: ["ma", "fille", "mon", "fils"]},
+      {day:"027", type:"MIP", block_number:"003", name:"L027MIP003", fr: "je suis allé", en: "I went", words: ["je", "suis", "allé"]},
+      {day:"027", type:"MIP", block_number:"004", name:"L027MIP004", fr: "j’ai parlé", en: "I spoke", words: ["j", "ai", "parlé"]},
+      {day:"027", type:"MIP", block_number:"005", name:"L027MIP005", fr: "j’ai travaillé", en: "I worked", words: ["j", "ai", "travaillé"]},
+      {day:"027", type:"COM", block_number:"001", name:"L027COM001", fr: "hier soir je suis allé au cinéma avec mes deux enfants", en: "Last night I went to the movies with my two children", words: ["hier", "soir", "je", "suis", "allé", "au", "cinéma", "avec", "mes", "deux", "enfants"]},
+      {day:"027", type:"COM", block_number:"002", name:"L027COM002", fr: "On a cherché un petit restaurant pendant une heure", en: "We looked for a small restaurant for an hour", words: ["on", "a", "cherché", "un", "petit", "restaurant", "pendant", "une", "heure"]},
+      {day:"027", type:"COM", block_number:"003", name:"L027COM003", fr: "J’ai compris il y a une heure", en: "I understood an hour ago", words: ["j", "ai", "compris", "il", "y", "a", "une", "heure"]},
+      {day:"027", type:"COM", block_number:"004", name:"L027COM004", fr: "Vous avez fait quelque chose d’intéressant hier ?", en: "Did you do anything interesting yesterday?", words: ["vous", "avez", "fait", "quelque", "chose", "d", "intéressant", "hier"]},
+      {day:"027", type:"COM", block_number:"005", name:"L027COM005", fr: "Quoi d’autre ? Qu’est-ce que tu as fait d’autre ?", en: "What else ? What else have you done?", words: ["quoi", "d", "autre", "qu", "est", "ce", "que", "tu", "as", "fait", "d", "autre"]},
+      {day:"028", type:"QNA", block_number:"001", name:"L028QNA001", fr: "À quoi tu penses ?", en: "What are you thinking about ?", words: ["à", "quoi", "tu", "penses"]},
+      {day:"028", type:"MIP", block_number:"001", name:"L028MIP001", fr: "penser à quelque chose", en: "to think about something", words: ["penser", "à", "quelque", "chose"]},
+      {day:"028", type:"MIP", block_number:"002", name:"L028MIP002", fr: "qui", en: "who", words: ["qui"]},
+      {day:"028", type:"MIP", block_number:"003", name:"L028MIP003", fr: "jamais", en: "never", words: ["jamais"]},
+      {day:"028", type:"MIP", block_number:"004", name:"L028MIP004", fr: "souvent", en: "often", words: ["souvent"]},
+      {day:"028", type:"MIP", block_number:"005", name:"L028MIP005", fr: "chaque semaine", en: "every week", words: ["chaque", "semaine"]},
+      {day:"028", type:"COM", block_number:"001", name:"L028COM001", fr: "Je pense à un problème au travail", en: "I’m thinking about a problem at work", words: ["je", "pense", "à", "un", "problème", "au", "travail"]},
+      {day:"028", type:"COM", block_number:"002", name:"L028COM002", fr: "À qui tu penses ?", en: "Who are you thinking about ?", words: ["à", "qui", "tu", "penses"]},
+      {day:"028", type:"COM", block_number:"003", name:"L028COM003", fr: "Tu penses encore à elle ?", en: "Do you still think about her?", words: ["tu", "penses", "encore", "à", "elle"]},
+      {day:"028", type:"COM", block_number:"004", name:"L028COM004", fr: "Je pense à rien d’intéressant , pourquoi ?", en: "I’m not thinking about anything interesting, why?", words: ["je", "pense", "à", "rien", "d", "intéressant", "pourquoi"]},
+      {day:"028", type:"COM", block_number:"005", name:"L028COM005", fr: "Tu penses souvent à aller en France ?", en: "Do you ou often think about going to France?", words: ["tu", "penses", "souvent", "à", "aller","en", "france"]},
+      {day:"029", type:"QNA", block_number:"001", name:"L029QNA001", fr: "Est-ce que c’est à toi, ce téléphone ?", en: "Is this yours, this phone ?", words: ["est", "ce", "que", "c", "est", "à", "toi", "ce", "téléphone"]},
+      {day:"029", type:"MIP", block_number:"001", name:"L029MIP001", fr: "le mien", en: "mine", words: ["le", "mien"]},
+      {day:"029", type:"MIP", block_number:"002", name:"L029MIP002", fr: "le tien", en: "yours", words: ["le", "tien"]},
+      {day:"029", type:"MIP", block_number:"003", name:"L029MIP003", fr: "nous avons", en: "Non colloquial. We have", words: ["nous", "avons"]},
+      {day:"029", type:"MIP", block_number:"004", name:"L029MIP004", fr: "ils ont un téléphone", en: "they have a phone", words: ["ils", "ont", "un", "téléphone"]},
+      {day:"029", type:"MIP", block_number:"005", name:"L029MIP005", fr: "ils sont français , elles sont françaises", en: "they are French", words: ["ils", "sont", "français", "elles", "sont", "françaises"]},
+      {day:"029", type:"COM", block_number:"001", name:"L029COM001", fr: "Oui c’est le mien ! Je le cherche depuis une heure", en: "Yes it’s mine ! I’ve been looking for it for an hour", words: ["oui", "c", "est", "le", "mien", "je", "le", "cherche", "depuis", "une", "heure"]},
+      {day:"029", type:"COM", block_number:"002", name:"L029COM002", fr: "C’est ton chien , c’est le tien", en: "It’s your dog, it’s yours", words: ["c", "est", "ton", "chien", "c", "est", "le", "tien"]},
+      {day:"029", type:"COM", block_number:"003", name:"L029COM003", fr: "Nous n’avons pas d’enfants", en: "We do not have kids", words: ["nous", "n", "avons", "pas", "d", "enfants"]},
+      {day:"029", type:"COM", block_number:"004", name:"L029COM004", fr: "Ils ont beaucoup de travail", en: "They have a lot of work", words: ["ils", "ont", "beaucoup", "de", "travail"]},
+      {day:"029", type:"COM", block_number:"005", name:"L029COM005", fr: "Ils sont à la maison", en: "They are at home", words: ["ils", "sont", "à", "la", "maison"]},
+      {day:"030", type:"QNA", block_number:"001", name:"L030QNA001", fr: "Tu as des frêres et soeurs ?", en: "Do you have any siblings ?", words: ["tu", "as", "des", "frêres", "et", "soeurs"]},
+      {day:"030", type:"MIP", block_number:"001", name:"L030MIP001", fr: "j’ai de l’argent", en: "I have some money", words: ["j", "ai", "de", "l", "argent"]},
+      {day:"030", type:"MIP", block_number:"002", name:"L030MIP002", fr: "j’avais le temps", en: "Imparfait. I had the time", words: ["j", "avais", "le", "temps"]},
+      {day:"030", type:"MIP", block_number:"003", name:"L030MIP003", fr: "j’étais là-bas", en: "Imparfait. I was there", words: ["j", "étais", "là", "bas"]},
+      {day:"030", type:"MIP", block_number:"004", name:"L030MIP004", fr: "c’était trop tard", en: "it was too late", words: ["c", "était", "trop", "tard"]},
+      {day:"030", type:"MIP", block_number:"005", name:"L030MIP005", fr: "par ici", en: "this way", words: ["par", "ici"]},
+      {day:"030", type:"COM", block_number:"001", name:"L030COM001", fr: "Oui, j’ai un petit frêre et une grande soeur", en: "Yes, I have a little brother and a big sister", words: ["oui", "j", "ai", "un", "petit", "frêre", "et", "une", "grande", "soeur"]},
+      {day:"030", type:"COM", block_number:"002", name:"L030COM002", fr: "Non, j’ai pas de frêres , pas de soeurs", en: "No, I have no brothers, no sisters", words: ["non", "j", "ai", "pas", "de", "frêres", "pas", "de", "soeurs"]},
+      {day:"030", type:"COM", block_number:"003", name:"L030COM003", fr: "Par ici les amis !", en: "This way, friends!", words: ["par", "ici", "les", "amis"]},
+      {day:"030", type:"COM", block_number:"004", name:"L030COM004", fr: "Je suis allé au cinéma , mais c’était trop tard !", en: "I went to the movies, but it was too late!", words: ["je", "suis", "allé", "au", "cinéma", "mais", "c", "était", "trop", "tard"]},
+      {day:"030", type:"COM", block_number:"005", name:"L030COM005", fr: "Hé , tu étais où ? Je te cherche depuis une heure !", en: "Hey, where were you? I’ve been looking for you for an hour!", words: ["hé", "tu", "étais", "où", "je", "te", "cherche", "depuis", "une", "heure"]},
+      {day:"031", type:"QNA", block_number:"001", name:"L031QNA001", fr: "Tu as encore faim ?", en: "Are you still hungry ?", words: ["tu", "as", "encore", "faim"]},
+      {day:"031", type:"MIP", block_number:"001", name:"L031MIP001", fr: "j’ai faim", en: "I’m hungry", words: ["j", "ai", "faim"]},
+      {day:"031", type:"MIP", block_number:"002", name:"L031MIP002", fr: "j’ai plus faim", en: "I’m not hungry anymore", words: ["j", "ai", "plus", "faim"]},
+      {day:"031", type:"MIP", block_number:"003", name:"L031MIP003", fr: "c’est si bon", en: "it’s so good", words: ["c", "est", "si", "bon"]},
+      {day:"031", type:"MIP", block_number:"004", name:"L031MIP004", fr: "avoir soif", en: "to be thirsty", words: ["avoir", "soif"]},
+      {day:"031", type:"MIP", block_number:"005", name:"L031MIP005", fr: "la cuisine française", en: "French cuisine", words: ["la", "cuisine", "française"]},
+      {day:"031", type:"COM", block_number:"001", name:"L031COM001", fr: "Oui , j’ai encore faim ! La cuisine française est si bonne !", en: "Yes, I’m still hungry! French cuisine is so good!", words: ["oui", "j", "ai", "encore", "faim", "la", "cuisine", "française", "est", "si", "bonne"]},
+      {day:"031", type:"COM", block_number:"002", name:"L031COM002", fr: "Oh, la viande est si bonne ! je comprends pas les végétariens !", en: "Oh, the meat is so good! I do not understand vegetarians!", words: ["oh", "la", "viande", "est", "si", "bonne", "je", "comprends", "pas", "les", "végétariens"]},
+      {day:"031", type:"COM", block_number:"003", name:"L031COM003", fr: "Ouf , j’ai plus faim ! mais alors plus du tout !", en: "Phew, I’m not hungry anymore! but then, not at all!", words: ["ouf", "j", "ai", "plus", "faim", "mais", "alors", "plus", "du", "tout"]},
+      {day:"031", type:"COM", block_number:"004", name:"L031COM004", fr: "On a soif !", en: "We are thirsty !", words: ["on", "a", "soif"]},
+      {day:"031", type:"COM", block_number:"005", name:"L031COM005", fr: "Vous avez encore soif ?", en: "Formal. You’re still thirsty?", words: ["vous", "avez", "encore", "soif"]},
+      {day:"032", type:"QNA", block_number:"001", name:"L032QNA001", fr: "Où est-ce que tu vas ?", en: "Where are you going?", words: ["où", "est", "ce", "que", "tu", "vas"]},
+      {day:"032", type:"MIP", block_number:"001", name:"L032MIP001", fr: "tu vas", en: "You go.", words: ["tu", "vas"]},
+      {day:"032", type:"MIP", block_number:"002", name:"L032MIP002", fr: "rentrer", en: "To go back.", words: ["rentrer"]},
+      {day:"032", type:"MIP", block_number:"003", name:"L032MIP003", fr: "je rentre", en: "I go back.", words: ["je", "rentre"]},
+      {day:"032", type:"MIP", block_number:"004", name:"L032MIP004", fr: "arriver", en: "Arrive.", words: ["arriver"]},
+      {day:"032", type:"MIP", block_number:"005", name:"L032MIP005", fr: "j’arrive", en: "I arrive.", words: ["j", "arrive"]},
+      {day:"032", type:"COM", block_number:"001", name:"L032COM001", fr: "je rentre chez moi", en: "I am coming back home.", words: ["je", "rentre", "chez", "moi"]},
+      {day:"032", type:"COM", block_number:"002", name:"L032COM002", fr: "je vais à Paris", en: "I go to Paris.", words: ["je", "vais", "à", "paris"]},
+      {day:"032", type:"COM", block_number:"003", name:"L032COM003", fr: "On va en ville, tu viens ?", en: "We’re going into town, are you coming?", words: ["on", "va","en", "ville", "tu", "viens"]},
+      {day:"032", type:"COM", block_number:"004", name:"L032COM004", fr: "Je vais à mon cours de français", en: "I go to my French classes.", words: ["je", "vais", "à", "mon", "cours", "de", "français"]},
+      {day:"032", type:"COM", block_number:"005", name:"L032COM005", fr: "Je vais au travail , je vais travailler.", en: "I go to work, I will work.", words: ["je", "vais", "au", "travail", "je", "vais", "travailler"]},
+      {day:"033", type:"QNA", block_number:"001", name:"L033QNA001", fr: "Qu’est-ce que vous allez faire demain ?", en: "What are you going to do tomorrow?", words: ["qu", "est", "ce", "que", "vous", "allez", "faire", "demain"]},
+      {day:"033", type:"MIP", block_number:"001", name:"L033MIP001", fr: "partir", en: "To leave.", words: ["partir"]},
+      {day:"033", type:"MIP", block_number:"002", name:"L033MIP002", fr: "on part tôt", en: "We leave early.", words: ["on", "part", "tôt"]},
+      {day:"033", type:"MIP", block_number:"003", name:"L033MIP003", fr: "vous allez rentrer", en: "You will go back.", words: ["vous", "allez", "rentrer"]},
+      {day:"033", type:"MIP", block_number:"004", name:"L033MIP004", fr: "je vais partir tard", en: "I will leave late.", words: ["je", "vais", "partir", "tard"]},
+      {day:"033", type:"MIP", block_number:"005", name:"L033MIP005", fr: "on va aller loin", en: "We will go far.", words: ["on", "va", "aller", "loin"]},
+      {day:"033", type:"COM", block_number:"001", name:"L033COM001", fr: "Demain, on part en vacances en France !", en: "Tomorrow we are leaving for a holiday to France!", words: ["demain", "on", "part","en", "vacances","en", "france"]},
+      {day:"033", type:"COM", block_number:"002", name:"L033COM002", fr: "Où est-ce que tu vas partir en vacances ?", en: "Where are you going on vacation?", words: ["où", "est", "ce", "que", "tu", "vas", "partir","en", "vacances"]},
+      {day:"033", type:"COM", block_number:"003", name:"L033COM003", fr: "Quand est-ce que vous allez rentrer ?", en: "When are you coming back?", words: ["quand", "est", "ce", "que", "vous", "allez", "rentrer"]},
+      {day:"033", type:"COM", block_number:"004", name:"L033COM004", fr: "Est-ce que vous allez partir demain ?", en: "Are you going to leave tomorrow?", words: ["est", "ce", "que", "vous", "allez", "partir", "demain"]},
+      {day:"033", type:"COM", block_number:"005", name:"L033COM005", fr: "Je vais partir tôt pour rentrer plus tôt", en: "I’ll leave early to go home earlier.", words: ["je", "vais", "partir", "tôt", "pour", "rentrer", "plus", "tôt"]},
+      {day:"034", type:"QNA", block_number:"001", name:"L034QNA001", fr: "Qu’est-ce qu’il y a ?", en: "What’s the matter?", words: ["qu", "est", "ce", "qu", "il", "y", "a"]},
+      {day:"034", type:"MIP", block_number:"001", name:"L034MIP001", fr: "C’est une bonne idée", en: "It’s a good idea.", words: ["c", "est", "une", "bonne", "idée"]},
+      {day:"034", type:"MIP", block_number:"002", name:"L034MIP002", fr: "Il y a un problème", en: "There is a problem.", words: ["il", "y", "a", "un", "problème"]},
+      {day:"034", type:"MIP", block_number:"003", name:"L034MIP003", fr: "C’est un problème", en: "It is a problem.", words: ["c", "est", "un", "problème"]},
+      {day:"034", type:"MIP", block_number:"004", name:"L034MIP004", fr: "ça va aller", en: "It will be fine.", words: ["ça", "va", "aller"]},
+      {day:"034", type:"MIP", block_number:"005", name:"L034MIP005", fr: "il y a un truc", en: "There is something.", words: ["il", "y", "a", "un", "truc"]},
+      {day:"034", type:"COM", block_number:"001", name:"L034COM001", fr: "Rien, j’ai juste des problèmes au travail", en: "Nothing, I just have problems at work.", words: ["rien", "j", "ai", "juste", "des", "problèmes", "au", "travail"]},
+      {day:"034", type:"COM", block_number:"002", name:"L034COM002", fr: "Il a un problème avec son téléphone", en: "He has a problem with his phone.", words: ["il", "a", "un", "problème", "avec", "son", "téléphone"]},
+      {day:"034", type:"COM", block_number:"003", name:"L034COM003", fr: "Il y a un problème depuis longtemps", en: "There has been a problem for a long time.", words: ["il", "y", "a", "un", "problème", "depuis", "longtemps"]},
+      {day:"034", type:"COM", block_number:"004", name:"L034COM004", fr: "Il y a longtemps que tu es ici ?", en: "It’s been a long time you’re here?", words: ["il", "y", "a", "longtemps", "que", "tu", "es", "ici"]},
+      {day:"034", type:"COM", block_number:"005", name:"L034COM005", fr: "C’est quoi ce truc ?", en: "What is that thing?", words: ["c", "est", "quoi", "ce", "truc"]},
+      {day:"035", type:"QNA", block_number:"001", name:"L035QNA001", fr: "Tu y vas déjà ?", en: "Are you already going?", words: ["tu", "y", "vas", "déjà"]},
+      {day:"035", type:"MIP", block_number:"001", name:"L035MIP001", fr: "Je vais là-bas J’y vais", en: "I go there, I go.", words: ["je", "vais", "là", "bas", "j", "y", "vais"]},
+      {day:"035", type:"MIP", block_number:"002", name:"L035MIP002", fr: "Je suis ici, j’y suis", en: "I am here, I am there.", words: ["je", "suis", "ici", "j", "y", "suis"]},
+      {day:"035", type:"MIP", block_number:"003", name:"L035MIP003", fr: "Je pense à ça, j’y pense", en: "I think about that, I think about it.", words: ["je", "pense", "à", "ça", "j", "y", "pense"]},
+      {day:"035", type:"MIP", block_number:"004", name:"L035MIP004", fr: "C’est possibe", en: "It’s possibe.", words: ["c", "est", "possibe"]},
+      {day:"035", type:"MIP", block_number:"005", name:"L035MIP005", fr: "il y a personne", en: "There is nobody.", words: ["il", "y", "a", "personne"]},
+      {day:"035", type:"COM", block_number:"001", name:"L035COM001", fr: "Allez , salut , j’y vais !", en: "Alright, bye, I’m leaving!", words: ["allez", "salut", "j", "y", "vais"]},
+      {day:"035", type:"COM", block_number:"002", name:"L035COM002", fr: "Non, c’est pas possible, il y a un truc !", en: "No, this is not possible, there is a trick!", words: ["non", "c", "est", "pas", "possible", "il", "y", "a", "un", "truc"]},
+      {day:"035", type:"COM", block_number:"003", name:"L035COM003", fr: "Il y a quelqu’un ? Non, il y a personne .", en: "Is there anyone? No, there’s nobody.", words: ["il", "y", "a", "quelqu", "un", "non", "il", "y", "a", "personne"]},
+      {day:"035", type:"COM", block_number:"004", name:"L035COM004", fr: "J’y comprends rien", en: "I don’t understand anything.", words: ["j", "y", "comprends", "rien"]},
+      {day:"035", type:"COM", block_number:"005", name:"L035COM005", fr: "J’y pense tout le temps", en: "I think about it all the time.", words: ["j", "y", "pense", "tout", "le", "temps"]},
+      {day:"036", type:"QNA", block_number:"001", name:"L036QNA001", fr: "Qu’est ce que tu es en train de faire ?", en: "What are you doing?", words: ["qu", "est", "ce", "que", "tu", "es","en", "train", "de", "faire"]},
+      {day:"036", type:"MIP", block_number:"001", name:"L036MIP001", fr: "en train de", en: "In the process of.", words: ["en", "train", "de"]},
+      {day:"036", type:"MIP", block_number:"002", name:"L036MIP002", fr: "un train", en: "A train.", words: ["un", "train"]},
+      {day:"036", type:"MIP", block_number:"003", name:"L036MIP003", fr: "je suis en train de parler", en: "I’m speaking.", words: ["je", "suis","en", "train", "de", "parler"]},
+      {day:"036", type:"MIP", block_number:"004", name:"L036MIP004", fr: "Attends !", en: "Wait!", words: ["attends"]},
+      {day:"036", type:"MIP", block_number:"005", name:"L036MIP005", fr: "Vous êtes en train de partir", en: "Plural. You are in the process of leaving.", words: ["vous", "êtes","en", "train", "de", "partir"]},
+      {day:"036", type:"COM", block_number:"001", name:"L036COM001", fr: "Attends ! Je suis en train de parler .", en: "Hold on! I’m speaking.", words: ["attends", "je", "suis","en", "train", "de", "parler"]},
+      {day:"036", type:"COM", block_number:"002", name:"L036COM002", fr: "J’attends le train", en: "I’m waiting for the train.", words: ["j", "attends", "le", "train"]},
+      {day:"036", type:"COM", block_number:"003", name:"L036COM003", fr: "Je prends le train", en: "I take the train.", words: ["je", "prends", "le", "train"]},
+      {day:"036", type:"COM", block_number:"004", name:"L036COM004", fr: "Tu es en train de travailler", en: "You’re working.", words: ["tu", "es","en", "train", "de", "travailler"]},
+      {day:"036", type:"COM", block_number:"005", name:"L036COM005", fr: "Il est déjà dans le train", en: "He’s already on the train.", words: ["il", "est", "déjà", "dans", "le", "train"]},
+      {day:"037", type:"QNA", block_number:"001", name:"L037QNA001", fr: "De quoi vous avez parlé ?", en: "Plural. What did you talk about?", words: ["de", "quoi", "vous", "avez", "parlé"]},
+      {day:"037", type:"MIP", block_number:"001", name:"L037MIP001", fr: "On a parlé", en: "We talked.", words: ["on", "a", "parlé"]},
+      {day:"037", type:"MIP", block_number:"002", name:"L037MIP002", fr: "J’ai raconté", en: "I told.", words: ["j", "ai", "raconté"]},
+      {day:"037", type:"MIP", block_number:"003", name:"L037MIP003", fr: "Tu as fait", en: "You did.", words: ["tu", "as", "fait"]},
+      {day:"037", type:"MIP", block_number:"004", name:"L037MIP004", fr: "dernier , dernière", en: "Last.", words: ["dernier", "dernière"]},
+      {day:"037", type:"MIP", block_number:"005", name:"L037MIP005", fr: "premier , première", en: "First.", words: ["premier", "première"]},
+      {day:"037", type:"COM", block_number:"001", name:"L037COM001", fr: "On a parlé de nos dernières vacances", en: "We talked about our last vacation.", words: ["on", "a", "parlé", "de", "nos", "dernières", "vacances"]},
+      {day:"037", type:"COM", block_number:"002", name:"L037COM002", fr: "J’ai parlé de ma première fois en France", en: "I talked about my first time in France.", words: ["j", "ai", "parlé", "de", "ma", "première", "fois","en", "france"]},
+      {day:"037", type:"COM", block_number:"003", name:"L037COM003", fr: "On est allé en France pour la première fois", en: "We went to France for the first time.", words: ["on", "est", "allé","en", "france", "pour", "la", "première", "fois"]},
+      {day:"037", type:"COM", block_number:"004", name:"L037COM004", fr: "On a raconté nos premières vacances en France", en: "We talked about our last vacation in France.", words: ["on", "a", "raconté", "nos", "premières", "vacances","en", "france"]},
+      {day:"037", type:"COM", block_number:"005", name:"L037COM005", fr: "Tu es la première , il est le dernier", en: "Female. You’re the first, he is the last.", words: ["tu", "es", "la", "première", "il", "est", "le", "dernier"]},
+      {day:"038", type:"QNA", block_number:"001", name:"L038QNA001", fr: "De quoi tu me parles ?", en: "What are you telling me?", words: ["de", "quoi", "tu", "me", "parles"]},
+      {day:"038", type:"MIP", block_number:"001", name:"L038MIP001", fr: "de toute façon", en: "Anyway.", words: ["de", "toute", "façon"]},
+      {day:"038", type:"MIP", block_number:"002", name:"L038MIP002", fr: "je te parle", en: "I’m talking to you.", words: ["je", "te", "parle"]},
+      {day:"038", type:"MIP", block_number:"003", name:"L038MIP003", fr: "tu me parles", en: "You are talking to me.", words: ["tu", "me", "parles"]},
+      {day:"038", type:"MIP", block_number:"004", name:"L038MIP004", fr: "je me parle", en: "I talk to myself.", words: ["je", "me", "parle"]},
+      {day:"038", type:"MIP", block_number:"005", name:"L038MIP005", fr: "tu te parles", en: "You talk to yourself.", words: ["tu", "te", "parles"]},
+      {day:"038", type:"COM", block_number:"001", name:"L038COM001", fr: "Tu me comprends pas de toute façon", en: "You don’t understand me anyway.", words: ["tu", "me", "comprends", "pas", "de", "toute", "façon"]},
+      {day:"038", type:"COM", block_number:"002", name:"L038COM002", fr: "Hé, allo ! Je te parle !", en: "Hey, hello! I’m talking to you!", words: ["hé", "allo", "je", "te", "parle"]},
+      {day:"038", type:"COM", block_number:"003", name:"L038COM003", fr: "Je ne veux plus te parler", en: "I do not want to talk to you anymore.", words: ["je", "ne", "veux", "plus", "te", "parler"]},
+      {day:"038", type:"COM", block_number:"004", name:"L038COM004", fr: "Je te comprends pas", en: "I do not understand you.", words: ["je", "te", "comprends", "pas"]},
+      {day:"038", type:"COM", block_number:"005", name:"L038COM005", fr: "Tu peux tout me dire", en: "You can tell me everything.", words: ["tu", "peux", "tout", "me", "dire"]},
+      {day:"039", type:"QNA", block_number:"001", name:"L039QNA001", fr: "Tu te rends compte de ce que tu dis ?", en: "Do you realize what you’re saying?", words: ["tu", "te", "rends", "compte", "de", "ce", "que", "tu", "dis"]},
+      {day:"039", type:"MIP", block_number:"001", name:"L039MIP001", fr: "se rendre compte", en: "To realize.", words: ["se", "rendre", "compte"]},
+      {day:"039", type:"MIP", block_number:"002", name:"L039MIP002", fr: "je me rends compte", en: "I realize.", words: ["je", "me", "rends", "compte"]},
+      {day:"039", type:"MIP", block_number:"003", name:"L039MIP003", fr: "c’est grave", en: "It’s serious.", words: ["c", "est", "grave"]},
+      {day:"039", type:"MIP", block_number:"004", name:"L039MIP004", fr: "je te dis", en: "I tell you.", words: ["je", "te", "dis"]},
+      {day:"039", type:"MIP", block_number:"005", name:"L039MIP005", fr: "je me dis", en: "I tell myself, I think.", words: ["je", "me", "dis"]},
+      {day:"039", type:"COM", block_number:"001", name:"L039COM001", fr: "Oui mais je me dis que c’est pas grave", en: "Yes, but I think that it’s okay.", words: ["oui", "mais", "je", "me", "dis", "que", "c", "est", "pas", "grave"]},
+      {day:"039", type:"COM", block_number:"002", name:"L039COM002", fr: "Tu te dis quoi , dans un moment comme ça ?", en: "What do you tell yourself, in a moment like this?", words: ["tu", "te", "dis", "quoi", "dans", "un", "moment", "comme", "ça"]},
+      {day:"039", type:"COM", block_number:"003", name:"L039COM003", fr: "On se dit que ça va aller", en: "We tell ourselves that it will be ok.", words: ["on", "se", "dit", "que", "ça", "va", "aller"]},
+      {day:"039", type:"COM", block_number:"004", name:"L039COM004", fr: "Je me dis souvent que c’est pas très grave", en: "I often tell myself that it is not very serious.", words: ["je", "me", "dis", "souvent", "que", "c", "est", "pas", "très", "grave"]},
+      {day:"039", type:"COM", block_number:"005", name:"L039COM005", fr: "Je me dis qu’il ne se rend pas compte", en: "I tell myself that he doesn’t realize.", words: ["je", "me", "dis", "qu", "il", "ne", "se", "rend", "pas", "compte"]},
+      {day:"040", type:"QNA", block_number:"001", name:"L040QNA001", fr: "Est-ce que tu as fini de travailler ?", en: "Are you finished working?", words: ["est", "ce", "que", "tu", "as", "fini", "de", "travailler"]},
+      {day:"040", type:"MIP", block_number:"001", name:"L040MIP001", fr: "finir", en: "To finish.", words: ["finir"]},
+      {day:"040", type:"MIP", block_number:"002", name:"L040MIP002", fr: "Je finis", en: "I finish.", words: ["je", "finis"]},
+      {day:"040", type:"MIP", block_number:"003", name:"L040MIP003", fr: "J’ai fini", en: "I’m finished, I’m done.", words: ["j", "ai", "fini"]},
+      {day:"040", type:"MIP", block_number:"004", name:"L040MIP004", fr: "Tu as fini", en: "You’re done.", words: ["tu", "as", "fini"]},
+      {day:"040", type:"MIP", block_number:"005", name:"L040MIP005", fr: "Elle a fini", en: "She has finished, she is done.", words: ["elle", "a", "fini"]},
+      {day:"040", type:"COM", block_number:"001", name:"L040COM001", fr: "Oui , c’est bon , on peut y aller !", en: "Yes, it’s ok, we can go!", words: ["oui", "c", "est", "bon", "on", "peut", "y", "aller"]},
+      {day:"040", type:"COM", block_number:"002", name:"L040COM002", fr: "Je suis en train de finir", en: "I’m finishing.", words: ["je", "suis","en", "train", "de", "finir"]},
+      {day:"040", type:"COM", block_number:"003", name:"L040COM003", fr: "Je finis et j’arrive", en: "I finish and I arrive.", words: ["je", "finis", "et", "j", "arrive"]},
+      {day:"040", type:"COM", block_number:"004", name:"L040COM004", fr: "J’ai fini , j’arrive", en: "I finished, I arrive.", words: ["j", "ai", "fini", "j", "arrive"]},
+      {day:"040", type:"COM", block_number:"005", name:"L040COM005", fr: "J’ai pas encore fini", en: "I haven’t finished yet.", words: ["j", "ai", "pas", "encore", "fini"]},
+      {day:"041", type:"QNA", block_number:"001", name:"L041QNA001", fr: "Est-ce que tu as été au travail ?", en: "Have you been at work?", words: ["est", "ce", "que", "tu", "as", "été", "au", "travail"]},
+      {day:"041", type:"MIP", block_number:"001", name:"L041MIP001", fr: "j’ai été", en: "I have been.", words: ["j", "ai", "été"]},
+      {day:"041", type:"MIP", block_number:"002", name:"L041MIP002", fr: "tu as été", en: "You have been.", words: ["tu", "as", "été"]},
+      {day:"041", type:"MIP", block_number:"003", name:"L041MIP003", fr: "On a été", en: "We have been.", words: ["on", "a", "été"]},
+      {day:"041", type:"MIP", block_number:"004", name:"L041MIP004", fr: "vous avez été", en: "Plural. You have been.", words: ["vous", "avez", "été"]},
+      {day:"041", type:"MIP", block_number:"005", name:"L041MIP005", fr: "l’été", en: "Summer.", words: ["l", "été"]},
+      {day:"041", type:"COM", block_number:"001", name:"L041COM001", fr: "Oui , j’ai été au travail tout l’été", en: "Yes, I was at work all summer.", words: ["oui", "j", "ai", "été", "au", "travail", "tout", "l", "été"]},
+      {day:"041", type:"COM", block_number:"002", name:"L041COM002", fr: "C’est déjà l’été", en: "It’s already summer.", words: ["c", "est", "déjà", "l", "été"]},
+      {day:"041", type:"COM", block_number:"003", name:"L041COM003", fr: "On a déjà été à Paris", en: "We have already been to Paris.", words: ["on", "a", "déjà", "été", "à", "paris"]},
+      {day:"041", type:"COM", block_number:"004", name:"L041COM004", fr: "Vous avez été au travail", en: "Plural. You have been at work.", words: ["vous", "avez", "été", "au", "travail"]},
+      {day:"041", type:"COM", block_number:"005", name:"L041COM005", fr: "Tu as été ici tout le temps ?", en: "You were here all the time?", words: ["tu", "as", "été", "ici", "tout", "le", "temps"]},
+      {day:"042", type:"QNA", block_number:"001", name:"L042QNA001", fr: "Tu penses que tu as eu raison ?", en: "Do you think you were right?", words: ["tu", "penses", "que", "tu", "as", "eu", "raison"]},
+      {day:"042", type:"MIP", block_number:"001", name:"L042MIP001", fr: "avoir raison", en: "To be right.", words: ["avoir", "raison"]},
+      {day:"042", type:"MIP", block_number:"002", name:"L042MIP002", fr: "avoir tord", en: "To be wrong.", words: ["avoir", "tord"]},
+      {day:"042", type:"MIP", block_number:"003", name:"L042MIP003", fr: "j’ai eu", en: "I’ve had.", words: ["j", "ai", "eu"]},
+      {day:"042", type:"MIP", block_number:"004", name:"L042MIP004", fr: "tu as eu", en: "You got.", words: ["tu", "as", "eu"]},
+      {day:"042", type:"MIP", block_number:"005", name:"L042MIP005", fr: "tu as eu tord", en: "You were wrong.", words: ["tu", "as", "eu", "tord"]},
+      {day:"042", type:"COM", block_number:"001", name:"L042COM001", fr: "Non, je pense que j’ai eu tord", en: "No, I think I was wrong.", words: ["non", "je", "pense", "que", "j", "ai", "eu", "tord"]},
+      {day:"042", type:"COM", block_number:"002", name:"L042COM002", fr: "Tu as raison d’essayer", en: "You’re right to try.", words: ["tu", "as", "raison", "d", "essayer"]},
+      {day:"042", type:"COM", block_number:"003", name:"L042COM003", fr: "Tu as tord de ne pas essayer", en: "You’re wrong not to try.", words: ["tu", "as", "tord", "de", "ne", "pas", "essayer"]},
+      {day:"042", type:"COM", block_number:"004", name:"L042COM004", fr: "J’ai eu beaucoup de problèmes", en: "I had many problems.", words: ["j", "ai", "eu", "beaucoup", "de", "problèmes"]},
+      {day:"042", type:"COM", block_number:"005", name:"L042COM005", fr: "Tu as eu raison de venir", en: "You were right to come.", words: ["tu", "as", "eu", "raison", "de", "venir"]},
+      {day:"043", type:"QNA", block_number:"001", name:"L043QNA001", fr: "Tout le monde est là ?", en: "Is everybody here?", words: ["tout", "le", "monde", "est", "là"]},
+      {day:"043", type:"MIP", block_number:"001", name:"L043MIP001", fr: "toute la journée", en: "All day.", words: ["toute", "la", "journée"]},
+      {day:"043", type:"MIP", block_number:"002", name:"L043MIP002", fr: "passez une bonne journée", en: "Formal. Have a nice day.", words: ["passez", "une", "bonne", "journée"]},
+      {day:"043", type:"MIP", block_number:"003", name:"L043MIP003", fr: "j’ai passé la journée", en: "I spent the day.", words: ["j", "ai", "passé", "la", "journée"]},
+      {day:"043", type:"MIP", block_number:"004", name:"L043MIP004", fr: "tout le monde", en: "Everybody.", words: ["tout", "le", "monde"]},
+      {day:"043", type:"MIP", block_number:"005", name:"L043MIP005", fr: "j’ai passé ma vie", en: "I spent my life.", words: ["j", "ai", "passé", "ma", "vie"]},
+      {day:"043", type:"COM", block_number:"001", name:"L043COM001", fr: "Non, mon ami n’est pas encore là !", en: "No, my friend is not there yet!", words: ["non", "mon", "ami", "n", "est", "pas", "encore", "là"]},
+      {day:"043", type:"COM", block_number:"002", name:"L043COM002", fr: "Il a passé sa vie dans cette ville", en: "He spent his life in this city.", words: ["il", "a", "passé", "sa", "vie", "dans", "cette", "ville"]},
+      {day:"043", type:"COM", block_number:"003", name:"L043COM003", fr: "Passez une bonne journée ! Vous aussi !", en: "Formal. Have a nice day! You too!", words: ["passez", "une", "bonne", "journée", "vous", "aussi"]},
+      {day:"043", type:"COM", block_number:"004", name:"L043COM004", fr: "Il a passé la journée au travail", en: "He spent the day at work.", words: ["il", "a", "passé", "la", "journée", "au", "travail"]},
+      {day:"043", type:"COM", block_number:"005", name:"L043COM005", fr: "Tout le monde me voit ?", en: "Does everyone see me?", words: ["tout", "le", "monde", "me", "voit"]},
+      {day:"044", type:"QNA", block_number:"001", name:"L044QNA001", fr: "Tout le monde m’entends ?", en: "Does everybody hear me?", words: ["tout", "le", "monde", "m", "entends"]},
+      {day:"044", type:"MIP", block_number:"001", name:"L044MIP001", fr: "je te vois", en: "I see you.", words: ["je", "te", "vois"]},
+      {day:"044", type:"MIP", block_number:"002", name:"L044MIP002", fr: "tu m’entends", en: "You hear me.", words: ["tu", "m", "entends"]},
+      {day:"044", type:"MIP", block_number:"003", name:"L044MIP003", fr: "je vous vois", en: "Plural. I see you.", words: ["je", "vous", "vois"]},
+      {day:"044", type:"MIP", block_number:"004", name:"L044MIP004", fr: "tu m’écoutes", en: "You listen to me.", words: ["tu", "m", "écoutes"]},
+      {day:"044", type:"MIP", block_number:"005", name:"L044MIP005", fr: "Oui, mais je ne vous vois pas", en: "Formal. Yes, but I do not see you.", words: ["oui", "mais", "je", "ne", "vous", "vois", "pas"]},
+      {day:"044", type:"COM", block_number:"001", name:"L044COM001", fr: "Tu m’écoutes ?", en: "Are you listening to me?", words: ["tu", "m", "écoutes"]},
+      {day:"044", type:"COM", block_number:"002", name:"L044COM002", fr: "Tu m’entends ?", en: "Are you hearing me?", words: ["tu", "m", "entends"]},
+      {day:"044", type:"COM", block_number:"003", name:"L044COM003", fr: "Je t’entends pas bien", en: "I can not hear you well.", words: ["je", "t", "entends", "pas", "bien"]},
+      {day:"044", type:"COM", block_number:"004", name:"L044COM004", fr: "Il ne m’écoute jamais", en: "He never listens to me.", words: ["il", "ne", "m", "écoute", "jamais"]},
+      {day:"044", type:"COM", block_number:"005", name:"L044COM005", fr: "Je ne t’écoute plus", en: "I’m not listening to you anymore.", words: ["je", "ne", "t", "écoute", "plus"]},
+      {day:"045", type:"QNA", block_number:"001", name:"L045QNA001", fr: "Tu t’es levé en retard ?", en: "Did you get up late?", words: ["tu", "t", "es", "levé","en", "retard"]},
+      {day:"045", type:"MIP", block_number:"001", name:"L045MIP001", fr: "se lever", en: "To get up.", words: ["se", "lever"]},
+      {day:"045", type:"MIP", block_number:"002", name:"L045MIP002", fr: "être en retard", en: "To be late.", words: ["être","en", "retard"]},
+      {day:"045", type:"MIP", block_number:"003", name:"L045MIP003", fr: "je me suis levé", en: "I got up.", words: ["je", "me", "suis", "levé"]},
+      {day:"045", type:"MIP", block_number:"004", name:"L045MIP004", fr: "dormir", en: "To sleep.", words: ["dormir"]},
+      {day:"045", type:"MIP", block_number:"005", name:"L045MIP005", fr: "je dors", en: "I sleep.", words: ["je", "dors"]},
+      {day:"045", type:"COM", block_number:"001", name:"L045COM001", fr: "Oui, j’ai mal dormi", en: "Yes, I didn’t sleep well.", words: ["oui", "j", "ai", "mal", "dormi"]},
+      {day:"045", type:"COM", block_number:"002", name:"L045COM002", fr: "Désolé je suis très en retard", en: "Sorry I’m late.", words: ["désolé", "je", "suis", "très","en", "retard"]},
+      {day:"045", type:"COM", block_number:"003", name:"L045COM003", fr: "Elle est encore arrivée en retard", en: "She arrived late again.", words: ["elle", "est", "encore", "arrivée","en", "retard"]},
+      {day:"045", type:"COM", block_number:"004", name:"L045COM004", fr: "Je dors mal en ce moment", en: "I sleep badly lately.", words: ["je", "dors", "mal","en", "ce", "moment"]},
+      {day:"045", type:"COM", block_number:"005", name:"L045COM005", fr: "Je me suis levé trop tard", en: "I got up too late.", words: ["je", "me", "suis", "levé", "trop", "tard"]},
+      {day:"046", type:"QNA", block_number:"001", name:"L046QNA001", fr: "Tu vas laisser tomber ?", en: "Are you going to give up?", words: ["tu", "vas", "laisser", "tomber"]},
+      {day:"046", type:"MIP", block_number:"001", name:"L046MIP001", fr: "tomber", en: "To fall.", words: ["tomber"]},
+      {day:"046", type:"MIP", block_number:"002", name:"L046MIP002", fr: "laisser tomber", en: "To give up.", words: ["laisser", "tomber"]},
+      {day:"046", type:"MIP", block_number:"003", name:"L046MIP003", fr: "laisse tomber !", en: "Give up!", words: ["laisse", "tomber"]},
+      {day:"046", type:"MIP", block_number:"004", name:"L046MIP004", fr: "laisse moi seul", en: "Leave me alone.", words: ["laisse", "moi", "seul"]},
+      {day:"046", type:"MIP", block_number:"005", name:"L046MIP005", fr: "j’ai laissé tomber", en: "I gave up.", words: ["j", "ai", "laissé", "tomber"]},
+      {day:"046", type:"COM", block_number:"001", name:"L046COM001", fr: "Non, je ne laisse jamais tomber", en: "No, I never give up.", words: ["non", "je", "ne", "laisse", "jamais", "tomber"]},
+      {day:"046", type:"COM", block_number:"002", name:"L046COM002", fr: "Il a laissé tombé", en: "He gave up.", words: ["il", "a", "laissé", "tombé"]},
+      {day:"046", type:"COM", block_number:"003", name:"L046COM003", fr: "Il est tombé", en: "He fell.", words: ["il", "est", "tombé"]},
+      {day:"046", type:"COM", block_number:"004", name:"L046COM004", fr: "Laisse moi travailler , d’accord ?", en: "Let me work, okay?", words: ["laisse", "moi", "travailler", "d", "accord"]},
+      {day:"046", type:"COM", block_number:"005", name:"L046COM005", fr: "Laisse moi faire", en: "Let me do.", words: ["laisse", "moi", "faire"]},
+      {day:"047", type:"QNA", block_number:"001", name:"L047QNA001", fr: "Tu t’attends à quoi ?", en: "What are you expecting?", words: ["tu", "t", "attends", "à", "quoi"]},
+      {day:"047", type:"MIP", block_number:"001", name:"L047MIP001", fr: "attendre", en: "To wait.", words: ["attendre"]},
+      {day:"047", type:"MIP", block_number:"002", name:"L047MIP002", fr: "j’attends", en: "I wait.", words: ["j", "attends"]},
+      {day:"047", type:"MIP", block_number:"003", name:"L047MIP003", fr: "je t’attends", en: "I am waiting for you.", words: ["je", "t", "attends"]},
+      {day:"047", type:"MIP", block_number:"004", name:"L047MIP004", fr: "je m’attends", en: "I expect.", words: ["je", "m", "attends"]},
+      {day:"047", type:"MIP", block_number:"005", name:"L047MIP005", fr: "tu t’attends", en: "You expect.", words: ["tu", "t", "attends"]},
+      {day:"047", type:"COM", block_number:"001", name:"L047COM001", fr: "Je m’attends à comprendre quelques mots", en: "I expect to understand a few words.", words: ["je", "m", "attends", "à", "comprendre", "quelques", "mots"]},
+      {day:"047", type:"COM", block_number:"002", name:"L047COM002", fr: "Vous vous attendez à quoi ?", en: "Plural. What are you expecting?", words: ["vous", "vous", "attendez", "à", "quoi"]},
+      {day:"047", type:"COM", block_number:"003", name:"L047COM003", fr: "Je m’attends à rien de spécial", en: "I’m not expecting anything special.", words: ["je", "m", "attends", "à", "rien", "de", "spécial"]},
+      {day:"047", type:"COM", block_number:"004", name:"L047COM004", fr: "Tu m’attends ?", en: "Are you waiting for me?", words: ["tu", "m", "attends"]},
+      {day:"047", type:"COM", block_number:"005", name:"L047COM005", fr: "Tu m’entends ?", en: "Are you listening to me?", words: ["tu", "m", "entends"]},
+      {day:"048", type:"QNA", block_number:"001", name:"L048QNA001", fr: "Qu’est-ce que je t’ai dit ?", en: "What did I tell you?", words: ["qu", "est", "ce", "que", "je", "t", "ai", "dit"]},
+      {day:"048", type:"MIP", block_number:"001", name:"L048MIP001", fr: "je t’ai dit", en: "I told you.", words: ["je", "t", "ai", "dit"]},
+      {day:"048", type:"MIP", block_number:"002", name:"L048MIP002", fr: "tu m’as parlé", en: "You told me.", words: ["tu", "m", "as", "parlé"]},
+      {day:"048", type:"MIP", block_number:"003", name:"L048MIP003", fr: "je t’ai compris", en: "I understood you.", words: ["je", "t", "ai", "compris"]},
+      {day:"048", type:"MIP", block_number:"004", name:"L048MIP004", fr: "on m’a dit", en: "Somebody told me.", words: ["on", "m", "a", "dit"]},
+      {day:"048", type:"MIP", block_number:"005", name:"L048MIP005", fr: "je lui ai dit", en: "I told him.", words: ["je", "lui", "ai", "dit"]},
+      {day:"048", type:"COM", block_number:"001", name:"L048COM001", fr: "Tu m’as dit de ne pas être en retard .", en: "You told me not to be late.", words: ["tu", "m", "as", "dit", "de", "ne", "pas", "être","en", "retard"]},
+      {day:"048", type:"COM", block_number:"002", name:"L048COM002", fr: "Tu m’as déjà dit ça", en: "You already told me that.", words: ["tu", "m", "as", "déjà", "dit", "ça"]},
+      {day:"048", type:"COM", block_number:"003", name:"L048COM003", fr: "J’ai rien dit", en: "I didn’t say anything.", words: ["j", "ai", "rien", "dit"]},
+      {day:"048", type:"COM", block_number:"004", name:"L048COM004", fr: "Je lui ai dit de partir", en: "I told him to leave.", words: ["je", "lui", "ai", "dit", "de", "partir"]},
+      {day:"048", type:"COM", block_number:"005", name:"L048COM005", fr: "Qu’est-ce que tu m’as dit , déjà ?", en: "What did you tell me, already?", words: ["qu", "est", "ce", "que", "tu", "m", "as", "dit", "déjà"]},
+      {day:"049", type:"QNA", block_number:"001", name:"L049QNA001", fr: "Tu lui as parlé ?", en: "Did you talk to him?", words: ["tu", "lui", "as", "parlé"]},
+      {day:"049", type:"MIP", block_number:"001", name:"L049MIP001", fr: "je lui parle", en: "I am talking to him.", words: ["je", "lui", "parle"]},
+      {day:"049", type:"MIP", block_number:"002", name:"L049MIP002", fr: "je leur parle", en: "I talk to them.", words: ["je", "leur", "parle"]},
+      {day:"049", type:"MIP", block_number:"003", name:"L049MIP003", fr: "je leur ai parlé", en: "I told them.", words: ["je", "leur", "ai", "parlé"]},
+      {day:"049", type:"MIP", block_number:"004", name:"L049MIP004", fr: "il m’a parlé", en: "He spoke to me.", words: ["il", "m", "a", "parlé"]},
+      {day:"049", type:"MIP", block_number:"005", name:"L049MIP005", fr: "tu lui as parlé", en: "You have spoken to him.", words: ["tu", "lui", "as", "parlé"]},
+      {day:"049", type:"COM", block_number:"001", name:"L049COM001", fr: "Non je lui ai pas encore parlé", en: "No, I have not spoken to him.", words: ["non", "je", "lui", "ai", "pas", "encore", "parlé"]},
+      {day:"049", type:"COM", block_number:"002", name:"L049COM002", fr: "Je leur ai parlé", en: "I told them.", words: ["je", "leur", "ai", "parlé"]},
+      {day:"049", type:"COM", block_number:"003", name:"L049COM003", fr: "Ils m’ont parlé", en: "They talked to me.", words: ["ils", "m", "ont", "parlé"]},
+      {day:"049", type:"COM", block_number:"004", name:"L049COM004", fr: "Elles t’ont parlé", en: "They have spoken to you.", words: ["elles", "t", "ont", "parlé"]},
+      {day:"049", type:"COM", block_number:"005", name:"L049COM005", fr: "Elle t’a parlé", en: "She talked to you.", words: ["elle", "t", "a", "parlé"]},
+      {day:"050", type:"QNA", block_number:"001", name:"L050QNA001", fr: "Tu l’as vu ?", en: "Did you saw him?", words: ["tu", "l", "as", "vu"]},
+      {day:"050", type:"MIP", block_number:"001", name:"L050MIP001", fr: "je l’ai vu.e", en: "I saw it.", words: ["je", "l", "ai", "vu", "e"]},
+      {day:"050", type:"MIP", block_number:"002", name:"L050MIP002", fr: "je les ai lus", en: "I’ve read them.", words: ["je", "les", "ai", "lus"]},
+      {day:"050", type:"MIP", block_number:"003", name:"L050MIP003", fr: "je l’ai compris", en: "I understood it.", words: ["je", "l", "ai", "compris"]},
+      {day:"050", type:"MIP", block_number:"004", name:"L050MIP004", fr: "tu les as donné", en: "You gave them.", words: ["tu", "les", "as", "donné"]},
+      {day:"050", type:"MIP", block_number:"005", name:"L050MIP005", fr: "on l’a regardé", en: "We watched it.", words: ["on", "l", "a", "regardé"]},
+      {day:"050", type:"COM", block_number:"001", name:"L050COM001", fr: "Les Star Wars , on les a tous regardés !", en: "The Star Wars, we watched all of them!", words: ["les", "star", "wars", "on", "les", "a", "tous", "regardés"]},
+      {day:"050", type:"COM", block_number:"002", name:"L050COM002", fr: "Je les ai vu ensemble", en: "I saw them together.", words: ["je", "les", "ai", "vu", "ensemble"]},
+      {day:"050", type:"COM", block_number:"003", name:"L050COM003", fr: "Mes vêtements , je les ai tous donné", en: "My clothes, I have given them all.", words: ["mes", "vêtements", "je", "les", "ai", "tous", "donné"]},
+      {day:"050", type:"COM", block_number:"004", name:"L050COM004", fr: "je l’ai lu et je l’ai compris", en: "I read it and I understood.", words: ["je", "l", "ai", "lu", "et", "je", "l", "ai", "compris"]},
+      {day:"050", type:"COM", block_number:"005", name:"L050COM005", fr: "je les ai cherché", en: "I have sought.", words: ["je", "les", "ai", "cherché"]},
+      {day:"051", type:"QNA", block_number:"001", name:"L051QNA001", fr: "Est-ce que vous allez pouvoir partir en vacances ?", en: "Will you be able to go on holiday?", words: ["est", "ce", "que", "vous", "allez", "pouvoir", "partir","en", "vacances"]},
+      {day:"051", type:"MIP", block_number:"001", name:"L051MIP001", fr: "je vais pouvoir", en: "I’ll be able.", words: ["je", "vais", "pouvoir"]},
+      {day:"051", type:"MIP", block_number:"002", name:"L051MIP002", fr: "je pouvais", en: "I was able to.", words: ["je", "pouvais"]},
+      {day:"051", type:"MIP", block_number:"003", name:"L051MIP003", fr: "j’ai pu", en: "I could.", words: ["j", "ai", "pu"]},
+      {day:"051", type:"MIP", block_number:"004", name:"L051MIP004", fr: "ils peuvent", en: "They can.", words: ["ils", "peuvent"]},
+      {day:"051", type:"MIP", block_number:"005", name:"L051MIP005", fr: "elle a pu", en: "She could.", words: ["elle", "a", "pu"]},
+      {day:"051", type:"COM", block_number:"001", name:"L051COM001", fr: "Oui, on va pouvoir aller à Paris", en: "Yes, we will be able to go to Paris.", words: ["oui", "on", "va", "pouvoir", "aller", "à", "paris"]},
+      {day:"051", type:"COM", block_number:"002", name:"L051COM002", fr: "Je vais pouvoir y aller", en: "I will be able to go there.", words: ["je", "vais", "pouvoir", "y", "aller"]},
+      {day:"051", type:"COM", block_number:"003", name:"L051COM003", fr: "Je ne pouvais pas parler", en: "I could not talk.", words: ["je", "ne", "pouvais", "pas", "parler"]},
+      {day:"051", type:"COM", block_number:"004", name:"L051COM004", fr: "J’ai pu comprendre mon problème", en: "I could understand my problem.", words: ["j", "ai", "pu", "comprendre", "mon", "problème"]},
+      {day:"051", type:"COM", block_number:"005", name:"L051COM005", fr: "Ils peuvent faire beaucoup de choses", en: "They can do many things.", words: ["ils", "peuvent", "faire", "beaucoup", "de", "choses"]},
+      {day:"052", type:"QNA", block_number:"001", name:"L052QNA001", fr: "Tu veux bien m’aider ?", en: "Could you help me?", words: ["tu", "veux", "bien", "m", "aider"]},
+      {day:"052", type:"MIP", block_number:"001", name:"L052MIP001", fr: "vouloir", en: "To want to.", words: ["vouloir"]},
+      {day:"052", type:"MIP", block_number:"002", name:"L052MIP002", fr: "je vais aider", en: "I’ll help.", words: ["je", "vais", "aider"]},
+      {day:"052", type:"MIP", block_number:"003", name:"L052MIP003", fr: "j’ai voulu", en: "I wanted.", words: ["j", "ai", "voulu"]},
+      {day:"052", type:"MIP", block_number:"004", name:"L052MIP004", fr: "il a aidé", en: "He helped.", words: ["il", "a", "aidé"]},
+      {day:"052", type:"MIP", block_number:"005", name:"L052MIP005", fr: "je voulais", en: "I used to want.", words: ["je", "voulais"]},
+      {day:"052", type:"COM", block_number:"001", name:"L052COM001", fr: "Oui, bien sûr je peux t’aider", en: "Yes, of course, I can help you.", words: ["oui", "bien", "sûr", "je", "peux", "t", "aider"]},
+      {day:"052", type:"COM", block_number:"002", name:"L052COM002", fr: "Il voulait partir en vacances", en: "He wanted to go on vacation.", words: ["il", "voulait", "partir","en", "vacances"]},
+      {day:"052", type:"COM", block_number:"003", name:"L052COM003", fr: "Elle a voulu commencer tôt", en: "She wanted to start early.", words: ["elle", "a", "voulu", "commencer", "tôt"]},
+      {day:"052", type:"COM", block_number:"004", name:"L052COM004", fr: "Ils ont voulu se lever tard", en: "They wanted to get up late.", words: ["ils", "ont", "voulu", "se", "lever", "tard"]},
+      {day:"052", type:"COM", block_number:"005", name:"L052COM005", fr: "Je ne voulais pas être en retard", en: "I did not want to be late.", words: ["je", "ne", "voulais", "pas", "être","en", "retard"]},
+      {day:"053", type:"QNA", block_number:"001", name:"L053QNA001", fr: "Comment tu me trouves ?", en: "How do you find me?", words: ["comment", "tu", "me", "trouves"]},
+      {day:"053", type:"MIP", block_number:"001", name:"L053MIP001", fr: "je vais trouver", en: "I will find.", words: ["je", "vais", "trouver"]},
+      {day:"053", type:"MIP", block_number:"002", name:"L053MIP002", fr: "tu as trouvé", en: "You found.", words: ["tu", "as", "trouvé"]},
+      {day:"053", type:"MIP", block_number:"003", name:"L053MIP003", fr: "je te trouvais", en: "I was finding you.", words: ["je", "te", "trouvais"]},
+      {day:"053", type:"MIP", block_number:"004", name:"L053MIP004", fr: "d’habitude", en: "Usually.", words: ["d", "habitude"]},
+      {day:"053", type:"MIP", block_number:"005", name:"L053MIP005", fr: "elles ont trouvé", en: "Female. They found.", words: ["elles", "ont", "trouvé"]},
+      {day:"053", type:"COM", block_number:"001", name:"L053COM001", fr: "Tu es très belle , comme d’habitude", en: "You are very beautiful, as usual.", words: ["tu", "es", "très", "belle", "comme", "d", "habitude"]},
+      {day:"053", type:"COM", block_number:"002", name:"L053COM002", fr: "Ils l’ont trouvé très beau", en: "They found him handsome.", words: ["ils", "l", "ont", "trouvé", "très", "beau"]},
+      {day:"053", type:"COM", block_number:"003", name:"L053COM003", fr: "Je te trouve très intéressant", en: "I find you very interesting.", words: ["je", "te", "trouve", "très", "intéressant"]},
+      {day:"053", type:"COM", block_number:"004", name:"L053COM004", fr: "j’ai trouvé quelque chose", en: "I found something.", words: ["j", "ai", "trouvé", "quelque", "chose"]},
+      {day:"053", type:"COM", block_number:"005", name:"L053COM005", fr: "Je me trouve vieux", en: "I find myself old.", words: ["je", "me", "trouve", "vieux"]},
+      {day:"054", type:"QNA", block_number:"001", name:"L054QNA001", fr: "Donne moi ta main !", en: "Give me your hand!", words: ["donne", "moi", "ta", "main"]},
+      {day:"054", type:"MIP", block_number:"001", name:"L054MIP001", fr: "faire les courses", en: "To go shopping.", words: ["faire", "les", "courses"]},
+      {day:"054", type:"MIP", block_number:"002", name:"L054MIP002", fr: "donner", en: "To give.", words: ["donner"]},
+      {day:"054", type:"MIP", block_number:"003", name:"L054MIP003", fr: "je donnais", en: "I was giving, I used to give.", words: ["je", "donnais"]},
+      {day:"054", type:"MIP", block_number:"004", name:"L054MIP004", fr: "vous avez donné", en: "Plural. You gave.", words: ["vous", "avez", "donné"]},
+      {day:"054", type:"MIP", block_number:"005", name:"L054MIP005", fr: "je te donne", en: "I give you.", words: ["je", "te", "donne"]},
+      {day:"054", type:"COM", block_number:"001", name:"L054COM001", fr: "Je peux pas, je porte les courses", en: "I can not, I’m carrying the groceries.", words: ["je", "peux", "pas", "je", "porte", "les", "courses"]},
+      {day:"054", type:"COM", block_number:"002", name:"L054COM002", fr: "Avant , je donnais beaucoup d’argent", en: "Before, I used to give a lot of money.", words: ["avant", "je", "donnais", "beaucoup", "d", "argent"]},
+      {day:"054", type:"COM", block_number:"003", name:"L054COM003", fr: "Je t’ai donné de l’argent", en: "I gave you money.", words: ["je", "t", "ai", "donné", "de", "l", "argent"]},
+      {day:"054", type:"COM", block_number:"004", name:"L054COM004", fr: "Donne moi plus de temps !", en: "Give me more time!", words: ["donne", "moi", "plus", "de", "temps"]},
+      {day:"054", type:"COM", block_number:"005", name:"L054COM005", fr: "Je fais mes courses", en: "I’m doing the groceries.", words: ["je", "fais", "mes", "courses"]},
+      {day:"055", type:"QNA", block_number:"001", name:"L055QNA001", fr: "Tu trouves ça intéressant ?", en: "You find it interesting?", words: ["tu", "trouves", "ça", "intéressant"]},
+      {day:"055", type:"MIP", block_number:"001", name:"L055MIP001", fr: "intéressant , intéressante", en: "Interesting.", words: ["intéressant", "intéressante"]},
+      {day:"055", type:"MIP", block_number:"002", name:"L055MIP002", fr: "même moi", en: "Even me.", words: ["même", "moi"]},
+      {day:"055", type:"MIP", block_number:"003", name:"L055MIP003", fr: "sans sucre", en: "Without sugar, sugar-free.", words: ["sans", "sucre"]},
+      {day:"055", type:"MIP", block_number:"004", name:"L055MIP004", fr: "juste la moitié", en: "Just half.", words: ["juste", "la", "moitié"]},
+      {day:"055", type:"MIP", block_number:"005", name:"L055MIP005", fr: "c’est trop long", en: "It is too long.", words: ["c", "est", "trop", "long"]},
+      {day:"055", type:"COM", block_number:"001", name:"L055COM001", fr: "Oui, même si c’est un peu long", en: "Yes, even if it’s a bit long.", words: ["oui", "même", "si", "c", "est", "un", "peu", "long"]},
+      {day:"055", type:"COM", block_number:"002", name:"L055COM002", fr: "Un café sans sucre s’il vous plaît", en: "A coffee without sugar, please.", words: ["un", "café", "sans", "sucre", "s", "il", "vous", "plaît"]},
+      {day:"055", type:"COM", block_number:"003", name:"L055COM003", fr: "J’ai juste mangé la moitié", en: "I just ate half.", words: ["j", "ai", "juste", "mangé", "la", "moitié"]},
+      {day:"055", type:"COM", block_number:"004", name:"L055COM004", fr: "Même lui , il pense que c’est trop long", en: "Even him, he thinks it’s too long.", words: ["même", "lui", "il", "pense", "que", "c", "est", "trop", "long"]},
+      {day:"055", type:"COM", block_number:"005", name:"L055COM005", fr: "Je regarde même si je comprends pas tout", en: "I watch even if I do not understand everything.", words: ["je", "regarde", "même", "si", "je", "comprends", "pas", "tout"]},
+      {day:"056", type:"QNA", block_number:"001", name:"L056QNA001", fr: "Bon, tu t’y mets ?", en: "Well, are you starting?", words: ["bon", "tu", "t", "y", "mets"]},
+      {day:"056", type:"MIP", block_number:"001", name:"L056MIP001", fr: "se mettre à quelque chose", en: "To start off something.", words: ["se", "mettre", "à", "quelque", "chose"]},
+      {day:"056", type:"MIP", block_number:"002", name:"L056MIP002", fr: "je me mets au sport", en: "I start exercising.", words: ["je", "me", "mets", "au", "sport"]},
+      {day:"056", type:"MIP", block_number:"003", name:"L056MIP003", fr: "Il se met à parler", en: "He starts talking.", words: ["il", "se", "met", "à", "parler"]},
+      {day:"056", type:"MIP", block_number:"004", name:"L056MIP004", fr: "mettre quelque chose", en: "To put something.", words: ["mettre", "quelque", "chose"]},
+      {day:"056", type:"MIP", block_number:"005", name:"L056MIP005", fr: "je le mets ici", en: "I put it here.", words: ["je", "le", "mets", "ici"]},
+      {day:"056", type:"COM", block_number:"001", name:"L056COM001", fr: "Oui, je m’y mets !", en: "Yes, I’ll start!", words: ["oui", "je", "m", "y", "mets"]},
+      {day:"056", type:"COM", block_number:"002", name:"L056COM002", fr: "Je l’ai mis ici", en: "I’ve put it here.", words: ["je", "l", "ai", "mis", "ici"]},
+      {day:"056", type:"COM", block_number:"003", name:"L056COM003", fr: "On s’y mets maintenant", en: "We’re starting now!", words: ["on", "s", "y", "mets", "maintenant"]},
+      {day:"056", type:"COM", block_number:"004", name:"L056COM004", fr: "je vais m’y mettre", en: "I’m going to start.", words: ["je", "vais", "m", "y", "mettre"]},
+      {day:"056", type:"COM", block_number:"005", name:"L056COM005", fr: "Je m’y suis mis il y a un mois", en: "I got into it a month ago.", words: ["je", "m", "y", "suis", "mis", "il", "y", "a", "un", "mois"]},
+      {day:"057", type:"QNA", block_number:"001", name:"L057QNA001", fr: "Tu préfères rester ?", en: "Would you rather stay?", words: ["tu", "préfères", "rester"]},
+      {day:"057", type:"MIP", block_number:"001", name:"L057MIP001", fr: "je vais rester", en: "I will stay.", words: ["je", "vais", "rester"]},
+      {day:"057", type:"MIP", block_number:"002", name:"L057MIP002", fr: "préférer", en: "I prefer.", words: ["préférer"]},
+      {day:"057", type:"MIP", block_number:"003", name:"L057MIP003", fr: "j’ai préféré", en: "I preferred.", words: ["j", "ai", "préféré"]},
+      {day:"057", type:"MIP", block_number:"004", name:"L057MIP004", fr: "je suis resté", en: "I stayed.", words: ["je", "suis", "resté"]},
+      {day:"057", type:"MIP", block_number:"005", name:"L057MIP005", fr: "je préférais", en: "I used to prefer.", words: ["je", "préférais"]},
+      {day:"057", type:"COM", block_number:"001", name:"L057COM001", fr: "Non, je préfère partir", en: "No, I would rather leave.", words: ["non", "je", "préfère", "partir"]},
+      {day:"057", type:"COM", block_number:"002", name:"L057COM002", fr: "Avant , je restais tout le temps chez moi", en: "Before, I stayed home all the time.", words: ["avant", "je", "restais", "tout", "le", "temps", "chez", "moi"]},
+      {day:"057", type:"COM", block_number:"003", name:"L057COM003", fr: "Je suis resté au travail toute la journée", en: "I stayed at work all day.", words: ["je", "suis", "resté", "au", "travail", "toute", "la", "journée"]},
+      {day:"057", type:"COM", block_number:"004", name:"L057COM004", fr: "Je préfère rester avec toi", en: "I would rather stay with you.", words: ["je", "préfère", "rester", "avec", "toi"]},
+      {day:"057", type:"COM", block_number:"005", name:"L057COM005", fr: "Elle est restée seule toute sa vie", en: "She remained single all her life.", words: ["elle", "est", "restée", "seule", "toute", "sa", "vie"]},
+      {day:"058", type:"QNA", block_number:"001", name:"L058QNA001", fr: "On commence tout de suite ?", en: "Are we starting right now?", words: ["on", "commence", "tout", "de", "suite"]},
+      {day:"058", type:"MIP", block_number:"001", name:"L058MIP001", fr: "tout de suite", en: "Right now.", words: ["tout", "de", "suite"]},
+      {day:"058", type:"MIP", block_number:"002", name:"L058MIP002", fr: "juste après", en: "Just after.", words: ["juste", "après"]},
+      {day:"058", type:"MIP", block_number:"003", name:"L058MIP003", fr: "un peu plus tard", en: "A bit later.", words: ["un", "peu", "plus", "tard"]},
+      {day:"058", type:"MIP", block_number:"004", name:"L058MIP004", fr: "c’est mieux", en: "It’s better.", words: ["c", "est", "mieux"]},
+      {day:"058", type:"MIP", block_number:"005", name:"L058MIP005", fr: "de mieux en mieux", en: "Better and better.", words: ["de", "mieux","en", "mieux"]},
+      {day:"058", type:"COM", block_number:"001", name:"L058COM001", fr: "Non , pas tout de suite , plus tard c’est mieux", en: "No, not right now later is better.", words: ["non", "pas", "tout", "de", "suite", "plus", "tard", "c", "est", "mieux"]},
+      {day:"058", type:"COM", block_number:"002", name:"L058COM002", fr: "On commence juste après", en: "We start right after.", words: ["on", "commence", "juste", "après"]},
+      {day:"058", type:"COM", block_number:"003", name:"L058COM003", fr: "Je prèfère qu’on commence plus tard", en: "I prefer that we start later.", words: ["je", "prèfère", "qu", "on", "commence", "plus", "tard"]},
+      {day:"058", type:"COM", block_number:"004", name:"L058COM004", fr: "Je préfère apprendre le français tôt le matin", en: "I prefer to learn French in the early morning.", words: ["je", "préfère", "apprendre", "le", "français", "tôt", "le", "matin"]},
+      {day:"058", type:"COM", block_number:"005", name:"L058COM005", fr: "Partir plus tard , c’est mieux pour moi !", en: "Leaving later is better for me!", words: ["partir", "plus", "tard", "c", "est", "mieux", "pour", "moi"]},
+      {day:"059", type:"QNA", block_number:"001", name:"L059QNA001", fr: "Pourquoi tu as arrêté de réviser ?", en: "Why did you stop reviewing?", words: ["pourquoi", "tu", "as", "arrêté", "de", "réviser"]},
+      {day:"059", type:"MIP", block_number:"001", name:"L059MIP001", fr: "je vais réviser", en: "I’m going to review.", words: ["je", "vais", "réviser"]},
+      {day:"059", type:"MIP", block_number:"002", name:"L059MIP002", fr: "j’ai arrêté", en: "I stopped.", words: ["j", "ai", "arrêté"]},
+      {day:"059", type:"MIP", block_number:"003", name:"L059MIP003", fr: "je suis fatigué", en: "I am tired.", words: ["je", "suis", "fatigué"]},
+      {day:"059", type:"MIP", block_number:"004", name:"L059MIP004", fr: "j’ai arrêté de réviser", en: "I stopped reviewing.", words: ["j", "ai", "arrêté", "de", "réviser"]},
+      {day:"059", type:"MIP", block_number:"005", name:"L059MIP005", fr: "j’arrêtais", en: "I was stopping.", words: ["j", "arrêtais"]},
+      {day:"059", type:"COM", block_number:"001", name:"L059COM001", fr: "Parce que j’étais fatiguée", en: "Because I was tired.", words: ["parce", "que", "j", "étais", "fatiguée"]},
+      {day:"059", type:"COM", block_number:"002", name:"L059COM002", fr: "Je révisais", en: "I was reviewing.", words: ["je", "révisais"]},
+      {day:"059", type:"COM", block_number:"003", name:"L059COM003", fr: "J’ai déjà révisé", en: "I have revised.", words: ["j", "ai", "déjà", "révisé"]},
+      {day:"059", type:"COM", block_number:"004", name:"L059COM004", fr: "On arrête ?", en: "Do we stop?", words: ["on", "arrête"]},
+      {day:"059", type:"COM", block_number:"005", name:"L059COM005", fr: "Tu es fatiguée ?", en: "Are you tired?", words: ["tu", "es", "fatiguée"]},
+      {day:"060", type:"QNA", block_number:"001", name:"L060QNA001", fr: "On continue ou on arrête ?", en: "Should we carry on or stop?", words: ["on", "continue", "ou", "on", "arrête"]},
+      {day:"060", type:"MIP", block_number:"001", name:"L060MIP001", fr: "continuer", en: "To continue.", words: ["continuer"]},
+      {day:"060", type:"MIP", block_number:"002", name:"L060MIP002", fr: "ils ont continué", en: "They continued.", words: ["ils", "ont", "continué"]},
+      {day:"060", type:"MIP", block_number:"003", name:"L060MIP003", fr: "je continue à apprendre", en: "I carry on learning.", words: ["je", "continue", "à", "apprendre"]},
+      {day:"060", type:"MIP", block_number:"004", name:"L060MIP004", fr: "tu as continué à apprendre", en: "You continued to learn.", words: ["tu", "as", "continué", "à", "apprendre"]},
+      {day:"060", type:"MIP", block_number:"005", name:"L060MIP005", fr: "je continue le français", en: "I keep learning French.", words: ["je", "continue", "le", "français"]},
+      {day:"060", type:"COM", block_number:"001", name:"L060COM001", fr: "Non , ça va, on peut continuer si tu veux", en: "No, it’s ok, we can continue if you want.", words: ["non", "ça", "va", "on", "peut", "continuer", "si", "tu", "veux"]},
+      {day:"060", type:"COM", block_number:"002", name:"L060COM002", fr: "Tu continues encore le français ?", en: "Do you keep learning French?", words: ["tu", "continues", "encore", "le", "français"]},
+      {day:"060", type:"COM", block_number:"003", name:"L060COM003", fr: "J’ai continué à apprendre pendant trois ans", en: "I kept learning for three years.", words: ["j", "ai", "continué", "à", "apprendre", "pendant", "trois", "ans"]},
+      {day:"060", type:"COM", block_number:"004", name:"L060COM004", fr: "J’ai voulu continuer toute la journée", en: "I wanted to continue all day long.", words: ["j", "ai", "voulu", "continuer", "toute", "la", "journée"]},
+      {day:"060", type:"COM", block_number:"005", name:"L060COM005", fr: "Elle a continué à nous parler de ses vacances", en: "She kept talking about her vacation.", words: ["elle", "a", "continué", "à", "nous", "parler", "de", "ses", "vacances"]},
+      {day:"061", type:"QNA", block_number:"001", name:"L061QNA001", fr: "Quelle heure est-il ?", en: "What time is it?", words: ["quelle", "heure", "est", "il"]},
+      {day:"061", type:"MIP", block_number:"001", name:"L061MIP001", fr: "treize heures trente", en: "One thirty PM.", words: ["treize", "heures", "trente"]},
+      {day:"061", type:"MIP", block_number:"002", name:"L061MIP002", fr: "une heure et demi", en: "One hour and a half.", words: ["une", "heure", "et", "demi"]},
+      {day:"061", type:"MIP", block_number:"003", name:"L061MIP003", fr: "c’est l’heure !", en: "It’s time!", words: ["c", "est", "l", "heure"]},
+      {day:"061", type:"MIP", block_number:"004", name:"L061MIP004", fr: "À quelle heure ?", en: "At what time?", words: ["à", "quelle", "heure"]},
+      {day:"061", type:"MIP", block_number:"005", name:"L061MIP005", fr: "Pendant des heures", en: "For hours.", words: ["pendant", "des", "heures"]},
+      {day:"061", type:"COM", block_number:"001", name:"L061COM001", fr: "Il est treize heure trente", en: "It is one thirty PM.", words: ["il", "est", "treize", "heure", "trente"]},
+      {day:"061", type:"COM", block_number:"002", name:"L061COM002", fr: "À quelle heure ils arrivent ?", en: "What time do they arrive?", words: ["à", "quelle", "heure", "ils", "arrivent"]},
+      {day:"061", type:"COM", block_number:"003", name:"L061COM003", fr: "Il nous a parlé pendant des heures", en: "He talked for hours.", words: ["il", "nous", "a", "parlé", "pendant", "des", "heures"]},
+      {day:"061", type:"COM", block_number:"004", name:"L061COM004", fr: "Il est onze heures quinze", en: "It’s eleven fifteen.", words: ["il", "est", "onze", "heures", "quinze"]},
+      {day:"061", type:"COM", block_number:"005", name:"L061COM005", fr: "il est trois heures", en: "It’s three o’clock.", words: ["il", "est", "trois", "heures"]}
+      ]
+  }),
+
+  computed: {
+    formTitle () {
+      return this.editedIndex === -1 ? 'New Item' : 'Edit Item'
+    }
+  },
+
+  watch: {
+    dialog (val) {
+      val || this.close()
+    }
+  },
+
+  methods: {
+    toggleAll () {
+      if (this.selected.length) this.selected = []
+      else this.selected = this.sentences.slice()
+    },
+    changeSort (column) {
+      if (this.pagination.sortBy === column) {
+        this.pagination.descending = !this.pagination.descending
+      } else {
+        this.pagination.sortBy = column
+        this.pagination.descending = false
+      }
+    },
+    editItem (item) {
+      this.editedIndex = this.sentences.indexOf(item)
+      this.editedItem = Object.assign({}, item)
+      this.dialog = true
+    },
+
+    deleteItem (item) {
+      const index = this.sentences.indexOf(item)
+      confirm('Are you sure you want to delete this item?') && this.sentences.splice(index, 1)
+    },
+
+    close () {
+      this.dialog = false
+      setTimeout(() => {
+        this.editedItem = Object.assign({}, this.defaultItem)
+        this.editedIndex = -1
+      }, 300)
+    },
+
+    save () {
+      if (this.editedIndex > -1) {
+        Object.assign(this.sentences[this.editedIndex], this.editedItem)
+      } else {
+        this.sentences.push(this.editedItem)
+      }
+      this.close()
+    },
+    created () {
+      this.initialize()
+    },
   }
 }
 </script>
+
+<style>
+* {
+  text-align: center;
+}
+h1 {
+  padding: 20px;
+}
+</style>
