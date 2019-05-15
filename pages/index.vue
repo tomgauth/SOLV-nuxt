@@ -68,6 +68,7 @@
         <td class="text-xs-left">{{ props.item.name }}</td>
         <td class="text-xs-left">{{ props.item.en }}</td>
         <td class="text-xs-left">{{ props.item.fr }}</td>
+        <td class="text-xs-left">{{ props.item.words }}</td>
         <td class="justify-center layout px-0">
           <v-icon
             small
@@ -117,7 +118,8 @@ export default {
       { text: 'type', value: 'type' },
       { text: 'Name', value: 'name' },
       { text: 'English', value: 'en' },
-      { text: 'French', value: 'fr' }
+      { text: 'French', value: 'fr' },
+      { text: 'Words', value: 'words'}
     ],
     editedIndex: -1,
       editedItem: {
